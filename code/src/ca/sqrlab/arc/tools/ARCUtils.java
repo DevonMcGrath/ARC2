@@ -1,6 +1,8 @@
 package ca.sqrlab.arc.tools;
 
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import ca.sqrlab.arc.ARC;
 import ca.sqrlab.arc.Project;
@@ -54,6 +56,7 @@ public class ARCUtils {
 	 * @param arc	the current instance of ARC.
 	 * @param l		the logger to document the process.
 	 * @return true if and only if the original project was copied successfully.
+	 * 
 	 * @since 1.0
 	 */
 	public static boolean copyOriginalProject(ARC arc, Logger l) {
@@ -70,6 +73,7 @@ public class ARCUtils {
 	 * @param dst	the destination directory.
 	 * @param l		the logger to document the process.
 	 * @return true if and only if the project was copied successfully.
+	 * 
 	 * @since 1.0
 	 */
 	public static boolean copyProject(String src, String dst, Logger l) {
@@ -114,8 +118,117 @@ public class ARCUtils {
 		Project p = new Project(dst);
 		if (!p.isValidProject()) {
 			l.fatalError("Could not copy project.");
+			return false;
 		}
 		
-		return !l.hasFatalError();
+		return true;
+	}
+	
+	/**
+	 * Attempts to copy only the project's source files from one root directory
+	 * to another. Both the source and destination directories must exist. If
+	 * the destination directories do not exist, they will be created.
+	 * 
+	 * @param arc	the current instance of ARC.
+	 * @param src	the source root directory (e.g. the project directory).
+	 * @param dst	the destination root directory.
+	 * @param l		the logger to keep track of events.
+	 * @return true if and only if no error occurred while copying files or
+	 * creating directories.
+	 * 
+	 * @see Project#getSourceFiles()
+	 * @since 1.0
+	 */
+	public static boolean copyProjectSourceFiles(ARC arc,
+			String src, String dst, Logger l) {
+		
+		if (l == null) {
+			l = new Logger();
+		}
+		
+		l.debug("Copying project source files: src='" + src +
+				"', dest='" + dst + "'");
+		
+		// Check project
+		if (arc == null) {
+			l.fatalError("No ARC.");
+			return false;
+		}
+		Project project = arc.getProject();
+		if (project == null) {
+			l.fatalError("No project.");
+			return false;
+		}
+		String[] sourceFiles = project.getSourceFiles();
+		if (sourceFiles == null || sourceFiles.length == 0) {
+			l.debug("No Java source files to copy.");
+			return true;
+		}
+		
+		// Check directories
+		if (src == null || dst == null || src.isEmpty() || dst.isEmpty()) {
+			l.fatalError("Invalid source/destination pair.");
+			return false;
+		} if (src.equals(dst)) { // trivial case
+			l.debug("Source and destination are the same.");
+			return true;
+		}
+		File srcDir = new File(src);
+		File destDir = new File(dst);
+		if (!srcDir.isDirectory()) {
+			l.fatalError("Source is not a directory.");
+			return false;
+		} if (!destDir.isDirectory()) {
+			l.fatalError("Destination is not a directory.");
+			return false;
+		}
+		
+		List<File> valid = new ArrayList<>();
+		String ds = arc.getSetting(ARC.SETTING_DIR_SEPARATOR);
+		if (!src.endsWith(ds)) {
+			src += ds;
+		} if (!dst.endsWith(ds)) {
+			dst += ds;
+		}
+		
+		// Check the source directory and copy if valid
+		for (String relPath : sourceFiles) {
+			if (relPath == null || relPath.isEmpty()) {
+				continue;
+			}
+			
+			// Check if the source file is there
+			String path = src + relPath;
+			File f = new File(path);
+			if (!f.isFile()) {
+				l.warning("No file found at path '" + path + "'.");
+				continue;
+			}
+			valid.add(f);
+			
+			// Check if the destination directory is there
+			path = dst + relPath;
+			f = new File(path).getParentFile();
+			if (f != null && !f.isDirectory()) {
+				if (!f.mkdirs()) {
+					l.fatalError("Unable to create directory to place file '"
+							+ path + "' in.");
+					return false;
+				}
+			}
+			
+			// Copy the file
+			FileUtils.copy(src + relPath, path, false);
+			if (!(new File(path)).isFile()) {
+				l.fatalError("Unable to copy file '" + relPath + "'.");
+				return false;
+			}
+		}
+		if (valid.isEmpty()) {
+			l.warning("No valid source files to copy.");
+			return true;
+		}
+		
+		return true;
 	}
 }

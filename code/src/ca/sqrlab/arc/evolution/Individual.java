@@ -105,7 +105,34 @@ public class Individual {
 	}
 	
 	public float getScore() {
-		return 0.0f;//TODO
+		
+		// No tests
+		if (results == null || results.length == 0) {
+			return Float.NEGATIVE_INFINITY;
+		}
+		
+		// Total the results
+		int passes = 0, fails = 0, testsRan = 0, n = results.length;
+		for (int i = 0; i < n; i ++) {
+			TestResult r = results[i];
+			passes += r.successes;
+			fails += r.failures;
+			testsRan += r.tests;
+		}
+		
+		/* TODO: keep track of each individual test
+		 
+		 F1 = # of JUnit tests which ALL pass / # of JUnit test cases
+		 
+		 F2 = passes / testsRan
+		 
+		 F3 = (F1 + F2) / 2
+		 
+		 */
+		
+		float F2 = (float) passes / testsRan;
+		
+		return F2;//TODO
 	}
 
 	public String getPath() {

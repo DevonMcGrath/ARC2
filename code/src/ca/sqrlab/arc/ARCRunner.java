@@ -227,6 +227,12 @@ public class ARCRunner extends Thread {
 			return;
 		}
 		
+		// Get the source files
+		if (!getProjectSourceFiles()) {
+			stopExecuting();
+			return;
+		}
+		
 		// Check the programs required (i.e. TXL, JAVA, JAVAC, ANT)
 		startNewPhase("Program Checking");
 		checkPrograms();
@@ -485,6 +491,95 @@ public class ARCRunner extends Thread {
 						s + "' is not a valid file.");
 			}
 		}
+	}
+	
+	/**
+	 * Dynamically finds all the Java source files for a given project.
+	 * Note: if {@link ARC#SETTING_PROJECT_SOURCE_DIR} is not set, this method
+	 * will attempt to dynamically find all non-JUnit Java source files.
+	 * 
+	 * @return true if and only if at least one source file was found.
+	 * @since 1.0
+	 */
+	private boolean getProjectSourceFiles() {
+		
+		// Check for the source directory
+		Project p = arc.getProject();
+		String ds = arc.getSetting(ARC.SETTING_DIR_SEPARATOR);
+		String prDir = p.getDirectory();
+		String srcDir = arc.getSetting(ARC.SETTING_PROJECT_SOURCE_DIR);
+		File pr = new File(prDir);
+		boolean exists = true;
+		if (srcDir == null || srcDir.isEmpty()) {
+			exists = false;
+		} else {
+			File f = new File(srcDir);
+			if (!f.isDirectory()) {
+				f = new File(prDir + ds + srcDir);
+				if (!f.isDirectory()) {
+					exists = false;
+				} else {
+					srcDir = f.getAbsolutePath();
+				}
+			} else {
+				srcDir = f.getAbsolutePath();
+			}
+		}
+		
+		// Determine source files dynamically
+		List<File> files = null;
+		final String JAVA_FILE_REGEX = ".+\\.java";
+		if (!exists) {
+			l.warning("Invalid or missing project config setting '" +
+					ARC.SETTING_PROJECT_SOURCE_DIR + "'. Will attempt to "
+							+ "find non-test Java files dynamically.");
+			files = FileUtils.find(prDir, JAVA_FILE_REGEX, true);
+			
+			// Remove any files in a test directory
+			String[] invalidDirs = {"test", "tests"};
+			int n = files.size();
+			for (int i = 0; i < n; i ++) {
+				File f = files.get(i);
+				while (f != null && !f.equals(pr)) {
+					f = f.getParentFile();
+					String name = f.getName();
+					for (String invalidDir : invalidDirs) {
+						if (invalidDir.equalsIgnoreCase(name)) {
+							f = null;
+							files.remove(i--);
+							n--;
+							break;
+						}
+					}
+				}
+			}
+		} else {
+			files = FileUtils.find(srcDir, JAVA_FILE_REGEX, true);
+		}
+		
+		// Check if there were no files
+		if (files == null || files.isEmpty()) {
+			l.fatalError("No Java files found for the project.");
+			return false;
+		}
+		
+		// Get the relative directories
+		int n = files.size();
+		String[] sourceFiles = new String[n];
+		for (int i = 0; i < n; i ++) {
+			File f = files.get(i);
+			String relPath = f.getName();
+			f = f.getParentFile();
+			while (f != null && !f.equals(pr)) {
+				relPath = f.getName() + ds + relPath;
+				f = f.getParentFile();
+			}
+			sourceFiles[i] = relPath;
+			l.debug("Project Java File Found: \"" + relPath + "\"");
+		}
+		this.arc.getProject().setSourceFiles(sourceFiles);
+		
+		return true;
 	}
 	
 	/**

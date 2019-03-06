@@ -6,11 +6,17 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
 
+/**
+ * The {@code FileUtils} class provides a number of methods for working with
+ * files on the local file-system.
+ * 
+ * @author Devon McGrath
+ * @since 1.0
+ */
 public class FileUtils {
 	
 	/**
@@ -150,55 +156,18 @@ public class FileUtils {
 			f.delete();
 		}
 	}
-
-	/**
-	 * <b><em>compile</em></b>
-	 * 
-	 * Attempts to compile an arbitrary program by invoking a subprocess.
-	 * 
-	 * @param cmd		the literal command to compile the project.
-	 * @param path		the working directory for the subprocess.
-	 * @param streams	any streams to print status messages.
-	 * @return the result of the process' execution.
-	 */
-	public static ProcessResult compile(String cmd, String path, PrintStream... streams) {
-		
-		if (streams == null) {
-			streams = new PrintStream[0];
-		}
-		
-		// No command or path does not exist
-		if (cmd == null || cmd.isEmpty()) { // no command
-			print("Unable to compile, no compile command specified.", streams);
-			return null;
-		} if (path == null || path.isEmpty()) { // no project path
-			print("Unable to compile, no project path specified.", streams);
-			return null;
-		}
-		File dir = new File(path);
-		if (!dir.isDirectory()) { // not a directory
-			print("Unable to compile, invalid project path '" + path + "'.",
-					streams);
-			return null;
-		}
-		
-		// Try to execute the process
-		ProcessResult pr = new ProcessResult();
-		try {
-			pr.setProcess(Runtime.getRuntime().exec(cmd, null, dir));
-			pr.readStreams();
-			print("Executed compile command '" + cmd +
-					"' in directory '" + path + "'.", streams);
-		} catch (Exception e) {
-			e.printStackTrace();
-			print("Failed to execute compile command '" + cmd +
-							"' in directory '" + path + "'. " +
-							e.getLocalizedMessage(), streams);
-		}
-		
-		return pr;
-	}
 	
+	/**
+	 * Converts an arbitrary string into a valid, absolute, system path. If the
+	 * path is null, empty, or is not a directory - then the current working
+	 * directory is returned.
+	 * 
+	 * @param path	the directory path.
+	 * @return an absolute version of the path passed or the current working
+	 * directory.
+	 * 
+	 * @since 1.0
+	 */
 	public static String asValidPath(String path) {
 		
 		// Not a valid directory
@@ -226,16 +195,17 @@ public class FileUtils {
 		return path;
 	}
 	
-	public static void print(String msg, PrintStream... streams) {
-		if (streams != null && msg != null) {
-			for (PrintStream ps : streams) {
-				if (ps != null) {
-					ps.println(msg);
-				}
-			}
-		}
-	}
-	
+	/**
+	 * Finds all files and directories which match the regular expression
+	 * provided in the source directory and optionally all sub-directories.
+	 * 
+	 * @param srcDir	the source directory path.
+	 * @param regex		the regular expression to validate file/directory names.
+	 * @param recursive	if true, all sub-directories will be checked.
+	 * @return a list of file objects which match the criteria or an empty list.
+	 * 
+	 * @since 1.0
+	 */
 	public static List<File> find(String srcDir, String regex, boolean recursive) {
 		
 		// Not a valid directory

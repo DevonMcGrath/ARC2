@@ -107,6 +107,10 @@ public class ARC extends SettingsManager {
 	 * during the GA phase. */
 	public static final String SETTING_RUN_COUNT = "RUN_COUNT";
 	
+	/** The setting name for the path with the project source files (not test
+	 * files). */
+	public static final String SETTING_PROJECT_SOURCE_DIR = "PROJECT_SRC_DIR";
+	
 	/** The project for ARC to run. */
 	private Project project;
 	

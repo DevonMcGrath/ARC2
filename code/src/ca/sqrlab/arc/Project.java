@@ -24,6 +24,10 @@ public class Project extends SettingsManager {
 	
 	private AntBuildFile buildFile;
 	
+	/** The array of <i>relative</i> paths to the Java source files in the
+	 * project (not including the JUnit source files). */
+	private String[] sourceFiles;
+	
 	public Project(String directory) {
 		super();
 		this.buildFile = new AntBuildFile();
@@ -71,6 +75,14 @@ public class Project extends SettingsManager {
 		return buildFile;
 	}
 	
+	public String[] getSourceFiles() {
+		return sourceFiles;
+	}
+
+	public void setSourceFiles(String[] sourceFiles) {
+		this.sourceFiles = sourceFiles;
+	}
+
 	@Override
 	public String setSetting(String setting, String value) {
 		if (setting == null || setting.isEmpty() || isStaticSetting(setting)) {
