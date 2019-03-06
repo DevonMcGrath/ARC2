@@ -3,14 +3,12 @@ package ca.sqrlab.arc.evolution;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.TreeMap;
 
 import ca.sqrlab.arc.ARC;
 import ca.sqrlab.arc.tools.ARCUtils;
 import ca.sqrlab.arc.tools.testing.TestResult;
 import ca.sqrlab.arc.tools.testing.TestRunner;
-import ca.sqrlab.arc.tools.testing.TestStatus;
+import ca.sqrlab.arc.tools.testing.TestingSummary;
 
 public class Individual {
 	
@@ -28,10 +26,7 @@ public class Individual {
 	private int srcIndividual = -1;
 	
 	/** The last results from testing this individual. */
-	private TestResult[] results;
-	
-	/** The {@link #results} placed in a map based on the test status. */
-	private Map<TestStatus, List<TestResult>> resultMap;
+	private TestingSummary testSummary;
 	
 	private List<Mutation> mutations;
 	
@@ -67,37 +62,20 @@ public class Individual {
 		}
 		
 		// Copy over the project
-		if (!ARCUtils.copyProject(path,
+		if (!ARCUtils.copyProjectSourceFiles(arc, path,
 				arc.getSetting(ARC.SETTING_PROJECT_DIR), null)) {
 			return false;
 		}
 		
 		// Run the program test-suite the specified number of times
 		TestRunner runner = new TestRunner(arc);
-		this.results = runner.execute(runs, false);
-		
-		// Place the results in a map
-		int n = results.length;
-		this.resultMap = new TreeMap<>();
-		for (int i = 0; i < n; i ++) {
-			TestResult tr = results[i];
-			TestStatus ts = tr.getStatus();
-			
-			// Get the previous list
-			if (resultMap.containsKey(ts)) {
-				this.resultMap.get(ts).add(tr);
-			} else { // not added yet
-				List<TestResult> list = new ArrayList<>();
-				list.add(tr);
-				this.resultMap.put(ts, list);
-			}
-		}
+		this.testSummary = runner.execute(runs, false);
 		
 		return true;
 	}
 	
 	public boolean hasBeenTested() {
-		return results != null && results.length > 0;
+		return testSummary != null && testSummary.getNumberOfTestsRun() > 0;
 	}
 	
 	public boolean exists() {
@@ -107,32 +85,45 @@ public class Individual {
 	public float getScore() {
 		
 		// No tests
-		if (results == null || results.length == 0) {
+		if (!hasBeenTested()) {
 			return Float.NEGATIVE_INFINITY;
 		}
 		
 		// Total the results
-		int passes = 0, fails = 0, testsRan = 0, n = results.length;
+		TestResult[] results = testSummary.getResults();
+		int passes = 0, testsRan = 0, n = results.length;
 		for (int i = 0; i < n; i ++) {
 			TestResult r = results[i];
 			passes += r.successes;
-			fails += r.failures;
 			testsRan += r.tests;
 		}
 		
-		/* TODO: keep track of each individual test
+		/*
+		 Possible Fitness Functions:
 		 
 		 F1 = # of JUnit tests which ALL pass / # of JUnit test cases
+		    = passed / totalUnitTests
+		 - Not good enough on it's own (would need more unit tests)
 		 
-		 F2 = passes / testsRan
+		 F2 = sum of all test result successes / # of test suite executions
+		    = passes / testsRan
 		 
 		 F3 = (F1 + F2) / 2
-		 
+		 - Combined fitness function
 		 */
 		
+		// Calculate the fitness of the individual
+		/*String[] failed = testSummary.getFailedMethods();
+		int totalUnitTests = testSummary.getUnitTestCount();
+		int passed = totalUnitTests;
+		if (failed != null) {
+			passed -= failed.length;
+		}
+		float F1 = (float) passed / totalUnitTests;*/
 		float F2 = (float) passes / testsRan;
+		//float F3 = (F1 + F2) / 2;
 		
-		return F2;//TODO
+		return F2;
 	}
 
 	public String getPath() {
@@ -180,23 +171,12 @@ public class Individual {
 		this.srcIndividual = individual;
 	}
 
-	public TestResult[] getResults() {
-		return results;
+	public TestingSummary getTestSummary() {
+		return testSummary;
 	}
-	
-	public Map<TestStatus, List<TestResult>> getResultMap() {
-		return resultMap;
-	}
-	
-	public List<TestResult> getResultsFor(TestStatus status) {
-		if (status == null || resultMap == null) {
-			return null;
-		}
-		return resultMap.get(status);
-	}
-	
-	public int getNumberOfTestsRun() {
-		return results == null? 0 : results.length;
+
+	public void setTestSummary(TestingSummary testSummary) {
+		this.testSummary = testSummary;
 	}
 
 	public List<Mutation> getMutations() {

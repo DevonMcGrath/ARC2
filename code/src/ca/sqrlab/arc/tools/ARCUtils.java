@@ -196,7 +196,7 @@ public class ARCUtils {
 			if (relPath == null || relPath.isEmpty()) {
 				continue;
 			}
-			
+
 			// Check if the source file is there
 			String path = src + relPath;
 			File f = new File(path);
@@ -218,7 +218,7 @@ public class ARCUtils {
 			}
 			
 			// Copy the file
-			FileUtils.copy(src + relPath, path, false);
+			FileUtils.copy(src + relPath, f.getAbsolutePath(), false);
 			if (!(new File(path)).isFile()) {
 				l.fatalError("Unable to copy file '" + relPath + "'.");
 				return false;

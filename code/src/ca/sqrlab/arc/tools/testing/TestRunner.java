@@ -2,6 +2,8 @@ package ca.sqrlab.arc.tools.testing;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -99,11 +101,11 @@ public class TestRunner {
 		return tr;
 	}
 	
-	public TestResult[] execute(int runs, boolean isFunctional) {
+	public TestingSummary execute(int runs, boolean isFunctional) {
 		
 		// Invalid number of runs or no ARC
 		if (runs <= 0 || arc == null) {
-			return new TestResult[0];
+			return new TestingSummary();
 		}
 		
 		// Remove ConTest logs
@@ -120,13 +122,13 @@ public class TestRunner {
 		results[0] = execute(isFunctional);
 		if (results[0].getStatus() == TestStatus.INVALID) {
 			TestResult[] err = {results[0]};
-			return err;
+			return new TestingSummary(err);
 		}
 		for (int i = 1; i < runs; i ++) {
 			results[i] = execute(isFunctional);
 		}
 		
-		return results;
+		return new TestingSummary(results);
 	}
 	
 	private void runProcess(ProcessBuilder pb, TestResult tr, boolean isFunctional)
@@ -171,6 +173,7 @@ public class TestRunner {
 		ProcessResult pr = new ProcessResult(p);
 		pr.readStreams();
 		String stdout = pr.getSTDOUT();
+		tr.setProcessResult(pr);
 		tr.addInfo("STDOUT='" + stdout + "'");
 		tr.addError("STDERR='" + pr.getSTDERR() + "'");
 		tr.addInfo("Exit code: " + p.exitValue());
@@ -189,13 +192,12 @@ public class TestRunner {
 				try {
 					tr.tests = Integer.parseInt(m.group(1));
 					tr.failures = Integer.parseInt(m.group(2));
+					tr.successes = tr.tests - tr.failures;
 				} catch (Exception e) {
 					e.printStackTrace();
 					tr.addError("Error: unable to fully parse # of tests and failures.");
 					parsingErr = true;
 				}
-			} else {
-				tr.addWarning("Warning: unable to locate # of tests and failures.");
 			}
 			
 			// Find the number of successes
@@ -204,13 +206,43 @@ public class TestRunner {
 			if (m.find()) {
 				try {
 					tr.successes = Integer.parseInt(m.group(1));
+					tr.tests = tr.successes;
 				} catch (Exception e) {
 					e.printStackTrace();
 					tr.addError("Error: unable to fully parse # of successes.");
 					parsingErr = true;
 				}
-			} else {
-				tr.addWarning("Warning: unable to locate # of successes.");
+			}
+			
+			// If there is failures, get the tests which failed
+			if (tr.failures > 0) {
+				
+				// Parse the standard output
+				List<String> failures = new ArrayList<>();
+				String[] lines = stdout.split("\r?\n");
+				String id = "(_[_\\$a-zA-Z]+|[\\$a-zA-Z]+)[_\\$a-zA-Z0-9]*";
+				Pattern failed = Pattern.compile("\\d+\\)\\s+(" +
+						id + "\\(" + id + "\\))");
+				for (String line : lines) {
+					m = failed.matcher(line);
+					if (!m.find()) {
+						continue;
+					}
+					
+					// Add the failure
+					failures.add(m.group(1));
+					if (failures.size() >= tr.failures) {
+						break;
+					}
+				}
+				
+				// Set the failures
+				int n = failures.size();
+				String[] fArr = new String[n];
+				for (int i = 0; i < n; i ++) {
+					fArr[i] = failures.get(i);
+				}
+				tr.setFailedMethods(fArr);
 			}
 			
 			// Failed to parse

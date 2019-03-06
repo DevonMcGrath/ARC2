@@ -3,6 +3,8 @@ package ca.sqrlab.arc.tools.testing;
 import java.util.ArrayList;
 import java.util.List;
 
+import ca.sqrlab.arc.io.ProcessResult;
+
 public class TestResult {
 	
 	public int tests;
@@ -17,7 +19,11 @@ public class TestResult {
 	
 	private String command;
 	
+	private ProcessResult processResult;
+	
 	private TestStatus status;
+	
+	private String[] failedMethods;
 	
 	private List<String> info;
 	
@@ -37,6 +43,8 @@ public class TestResult {
 		this.programTimeMillis = 0;
 		this.command = "";
 		this.status = TestStatus.UNKNOWN;
+		this.processResult = null;
+		this.failedMethods = new String[0];
 		this.info = new ArrayList<>();
 		this.warnings = new ArrayList<>();
 		this.errors = new ArrayList<>();
@@ -66,12 +74,31 @@ public class TestResult {
 		this.executionTimeMillis = executionTimeMillis;
 	}
 
+	public ProcessResult getProcessResult() {
+		return processResult;
+	}
+
+	public void setProcessResult(ProcessResult processResult) {
+		this.processResult = processResult;
+	}
+
 	public TestStatus getStatus() {
 		return status == null? TestStatus.UNKNOWN : status;
 	}
 	
 	public void setStatus(TestStatus status) {
 		this.status = status;
+	}
+
+	public String[] getFailedMethods() {
+		return failedMethods;
+	}
+
+	public void setFailedMethods(String[] failedMethods) {
+		if (failedMethods == null) {
+			failedMethods = new String[0];
+		}
+		this.failedMethods = failedMethods;
 	}
 
 	public List<String> getInfo() {

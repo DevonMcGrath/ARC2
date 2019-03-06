@@ -14,6 +14,7 @@ import ca.sqrlab.arc.tools.monitoring.Phase;
 import ca.sqrlab.arc.tools.mutation.TXLMutation;
 import ca.sqrlab.arc.tools.testing.TestResult;
 import ca.sqrlab.arc.tools.testing.TestStatus;
+import ca.sqrlab.arc.tools.testing.TestingSummary;
 
 /**
  * The {@code ARCGeneticAlgorithm} is responsible for evolving the target
@@ -206,8 +207,8 @@ public class ARCGeneticAlgorithm {
 		}
 		
 		// Copy the original project
-		if (!ARCUtils.copyProject(arc.getSetting(ARC.SETTING_PROJECT_DIR),
-				dir00, l)) {
+		if (!ARCUtils.copyProjectSourceFiles(
+				arc, arc.getSetting(ARC.SETTING_PROJECT_DIR), dir00, l)) {
 			l.fatalError("Unable to copy project to individual's directory.");
 			finishPhase(l);
 			return l;
@@ -345,8 +346,9 @@ public class ARCGeneticAlgorithm {
 		for (Individual individual : candidates) {
 			
 			// Determine which operators to bias towards
-			List<TestResult> dataraces = individual.getResultsFor(TestStatus.DATA_RACE);
-			List<TestResult> deadlocks = individual.getResultsFor(TestStatus.DEADLOCK);
+			TestingSummary summary = individual.getTestSummary();
+			List<TestResult> dataraces = summary.getResultsFor(TestStatus.DATA_RACE);
+			List<TestResult> deadlocks = summary.getResultsFor(TestStatus.DEADLOCK);
 			int dataraceCount = (dataraces == null)? 0 : dataraces.size();
 			int deadlockCount = (deadlocks == null)? 0 : deadlocks.size();
 			int total = dataraceCount + deadlockCount;

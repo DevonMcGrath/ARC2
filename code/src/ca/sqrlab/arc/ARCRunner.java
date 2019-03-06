@@ -15,6 +15,7 @@ import ca.sqrlab.arc.tools.mutation.TXLMutation;
 import ca.sqrlab.arc.tools.testing.TestResult;
 import ca.sqrlab.arc.tools.testing.TestRunner;
 import ca.sqrlab.arc.tools.testing.TestStatus;
+import ca.sqrlab.arc.tools.testing.TestingSummary;
 
 /**
  * The {@code ARCRunner} class is responsible for executing ARC and ensuring
@@ -398,6 +399,11 @@ public class ARCRunner extends Thread {
 		}
 		
 		// Start the genetic algorithm
+		if (onFinish != null) {
+			List<Phase> phases = l.getPhases();
+			this.onFinish.onFinish(ARC_PHASE_FINISHED_ID,
+					phases.get(phases.size() - 1));
+		}
 		ARCGeneticAlgorithm ga = new ARCGeneticAlgorithm(this, onFinish);
 		ga.run(l);
 		
@@ -654,7 +660,8 @@ public class ARCRunner extends Thread {
 		// Run some tests to determine a good timeout dynamically
 		TestRunner trunner = new TestRunner(arc);
 		l.debug("Acquiring timeout limit dynamically...");
-		TestResult[] trs = trunner.execute(15, true);
+		TestingSummary summary = trunner.execute(15, true);
+		TestResult[] trs = summary.getResults();
 		if (trs == null || trs.length == 0) {
 			l.fatalError("Could not dynamically attain timeout.");
 			return false;
@@ -696,7 +703,7 @@ public class ARCRunner extends Thread {
 			return false;
 		}
 		
-		// Update the average
+		// Update the timeout
 		average /= trs.length;
 		l.debug("Average execution time for " + trs.length + " tests: " +
 				average + "ms");
