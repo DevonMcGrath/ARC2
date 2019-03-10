@@ -9,6 +9,8 @@ import ca.sqrlab.arc.ARCRunner;
 import ca.sqrlab.arc.FinishListener;
 import ca.sqrlab.arc.io.FileUtils;
 import ca.sqrlab.arc.tools.ARCUtils;
+import ca.sqrlab.arc.tools.compilation.AntCompiler;
+import ca.sqrlab.arc.tools.compilation.ProjectCompiler;
 import ca.sqrlab.arc.tools.monitoring.Logger;
 import ca.sqrlab.arc.tools.monitoring.Phase;
 import ca.sqrlab.arc.tools.mutation.TXLMutation;
@@ -68,6 +70,10 @@ public class ARCGeneticAlgorithm {
 	/** The flag indicating if a valid fix was found for the project. */
 	private boolean foundFix;
 	
+	/** The individual which was found to fully pass all the tests in the
+	 * test-suite, even after further evaluation. */
+	private Individual solution;
+	
 	/**
 	 * Creates an ARC genetic algorithm using the ARC runner executing the GA.
 	 * 
@@ -114,6 +120,7 @@ public class ARCGeneticAlgorithm {
 		
 		this.generations = new ArrayList<>();
 		this.foundFix = false;
+		this.solution = null;
 		
 		// Make sure that ARC and a project exists
 		if (arc == null) {
@@ -220,6 +227,15 @@ public class ARCGeneticAlgorithm {
 		Generation g0 = new Generation(original);
 		this.generations.add(g0);
 		
+		// Make sure that the program is actually buggy
+		if (isFinalSolution(original, l)) {
+			l.debug("The original project was found to have no bugs.");
+			this.foundFix = true;
+			this.solution = original;
+			finishPhase(l);
+			return l;
+		}
+		
 		// Check if requested to stop
 		if (ar != null && ar.shouldStop()) {
 			l.fatalError("ARC was requested to stop.");
@@ -236,7 +252,7 @@ public class ARCGeneticAlgorithm {
 			// Evolve the population
 			if (evolve(l)) {
 				l.debug("Solution found.");
-				foundFix = true;
+				this.foundFix = true;
 				break;
 			}
 			
@@ -252,6 +268,8 @@ public class ARCGeneticAlgorithm {
 				finishPhase(l);
 				return l;
 			}
+			
+			finishPhase(l);
 		}
 		
 		// If no fix was found, tell the user
@@ -277,7 +295,6 @@ public class ARCGeneticAlgorithm {
 	 * @since 1.0
 	 */
 	private boolean evolve(Logger l) {
-		// TODO implement genetic algorithm
 		
 		int gen = generations.size();
 		
@@ -295,15 +312,42 @@ public class ARCGeneticAlgorithm {
 		Generation g = new Generation(population);
 		
 		// Create the mutants
-		generateMutants(l);
+		l.debug("Generating mutants for the generation...");
+		generateMutants(g, l);
 		if (l.hasFatalError()) {
 			return false;
 		}
-		
-		
 		this.generations.add(g);
+		l.debug("Done.");
+		finishPhase(l);
 		
-		return false; // TODO
+		// Test the population
+		int failed = 0;
+		for (Individual individual : population) {
+			
+			l.debug("Generation " + individual.getGeneration() +
+					", individual " + individual.getId());
+			
+			// Test the individual
+			if (!individual.test(arc, runs)) {
+				l.warning("Unable to run tests for individual " + individual);
+				failed ++;
+			}
+			
+			// Check if it is the solution
+			if (isFinalSolution(individual, l)) {
+				this.solution = individual;
+				return true;
+			}
+			
+			finishPhase(l);
+		}
+		if (failed == population.length) {
+			l.fatalError("Unable to test any individual from the current generation.");
+			return false;
+		}
+		
+		return false;
 	}
 	
 	/**
@@ -313,13 +357,17 @@ public class ARCGeneticAlgorithm {
 	 * mutation operator per candidate (from {@link #getMutationCandidates()})
 	 * will be applied to the program to avoid creating thousands of files.
 	 * 
+	 * @param g	the generation to generate mutants for.
 	 * @param l	the logger to track the mutation process.
-	 * 
-	 * @return the individuals which mutants were generated for.
 	 * 
 	 * @since 1.0
 	 */
-	private List<Individual> generateMutants(Logger l) {
+	private void generateMutants(Generation g, Logger l) {
+		
+		// No generation
+		if (g == null) {
+			return;
+		}
 		
 		// Determine all the possible individuals which can be mutated
 		List<Individual> candidates = getMutationCandidates();
@@ -341,88 +389,93 @@ public class ARCGeneticAlgorithm {
 		
 		final int MAX_TRIES = 10;
 		
-		// Get the new mutants for each candidate
-		List<TXLMutation> mutations = new ArrayList<>();
-		for (Individual individual : candidates) {
+		// Create the population
+		List<Individual> population = g.getPopulation();
+		int popSize = population == null? 0 : population.size();
+		for (int i = 0; i < popSize; i ++) {
 			
-			// Determine which operators to bias towards
-			TestingSummary summary = individual.getTestSummary();
-			List<TestResult> dataraces = summary.getResultsFor(TestStatus.DATA_RACE);
-			List<TestResult> deadlocks = summary.getResultsFor(TestStatus.DEADLOCK);
-			int dataraceCount = (dataraces == null)? 0 : dataraces.size();
-			int deadlockCount = (deadlocks == null)? 0 : deadlocks.size();
-			int total = dataraceCount + deadlockCount;
-			
-			TXLMutation m = null;
-			int attempt = 0;
-			File[] children = null;
-			
-			// Ensure that we explore multiple mutations if the first few do
-			// not generate any mutants
-			while (attempt++ < MAX_TRIES) {
+			Individual individual = population.get(i);
+		
+			// Get the new mutants for each candidate
+			for (Individual candidate : candidates) {
 				
-				// If we don't have information, just get a random operator
-				if (total == 0) {
-					m = TXLMutation.getRandomMutation();
-				}
+				// Determine which operators to bias towards
+				TestingSummary summary = candidate.getTestSummary();
+				List<TestResult> dataraces = summary.getResultsFor(TestStatus.DATA_RACE);
+				List<TestResult> deadlocks = summary.getResultsFor(TestStatus.DEADLOCK);
+				int dataraceCount = (dataraces == null)? 0 : dataraces.size();
+				int deadlockCount = (deadlocks == null)? 0 : deadlocks.size();
+				int total = dataraceCount + deadlockCount;
 				
-				// Otherwise, bias the operator
-				else {
-					double dataraceChance = ((double) dataraceCount) / total;
-					if (Math.random() <= dataraceChance) {
-						m = TXLMutation.getRandomDataraceMutation();
-					} else {
-						m = TXLMutation.getRandomDeadlockMutation();
-					}
+				TXLMutation m = null;
+				int attempt = 0;
+				boolean foundMutant = false;
+				
+				// Ensure that we explore multiple mutations if the first few do
+				// not generate any mutants
+				while (attempt++ < MAX_TRIES) {
 					
-					// If for some reason no operator, try to get a random one
-					if (m == null) {
+					// If we don't have information, just get a random operator
+					if (total == 0) {
 						m = TXLMutation.getRandomMutation();
 					}
+					
+					// Otherwise, bias the operator
+					else {
+						double dataraceChance = ((double) dataraceCount) / total;
+						if (Math.random() <= dataraceChance) {
+							m = TXLMutation.getRandomDataraceMutation();
+						} else {
+							m = TXLMutation.getRandomDeadlockMutation();
+						}
+						
+						// If for some reason no operator, try to get a random one
+						if (m == null) {
+							m = TXLMutation.getRandomMutation();
+						}
+					}
+					
+					// Failed to find an operator
+					if (m == null) {
+						l.fatalError("Unable to find mutation operator to use on individual "
+								+ candidate.getId() + " from generation "
+								+ candidate.getGeneration() + ".");
+						return;
+					}
+					
+					// Generate the mutants
+					String dir = mutateIndividual(candidate, m, l);
+					if (l.hasFatalError()) {
+						return;
+					}
+					
+					// Check for the directory
+					if (dir == null || dir.isEmpty() || !(new File(dir)).isDirectory()) {
+						l.fatalError("Unable to mutate individual " +
+								candidate.getId() + " from generation " +
+								candidate.getGeneration() + " using " + m + ".");
+						return;
+					}
+					
+					// Check if any mutants were generated
+					if (createMutantProgram(candidate, dir, individual, l)) {
+						foundMutant = true;
+						break;
+					}
 				}
 				
-				// Failed to find an operator
-				if (m == null) {
-					l.fatalError("Unable to find mutation operator to use on individual "
-							+ individual.getId() + " from generation "
-							+ individual.getGeneration() + ".");
-					return null;
-				}
-				
-				// Generate the mutants
-				String dir = mutateIndividual(individual, m, l);
-				if (l.hasFatalError()) {
-					return null;
-				}
-				
-				// Check for the directory
-				if (dir == null || dir.isEmpty() || !(new File(dir)).isDirectory()) {
+				// No valid mutations
+				if (!foundMutant) {
 					l.fatalError("Unable to mutate individual " +
-							individual.getId() + " from generation " +
-							individual.getGeneration() + " using " + m + ".");
-					return null;
+							candidate.getId() + " from generation " +
+							candidate.getGeneration() + ".");
+					return;
 				}
 				
-				// Check if any mutants were generated
-				children = (new File(dir)).listFiles();
-				if (children != null && children.length > 0) {
-					break;
-				}
-			}
-			mutations.add(m);
-			
-			// No valid mutations
-			if (children == null || children.length == 0) {
-				l.fatalError("Unable to mutate individual " +
-						individual.getId() + " from generation " +
-						individual.getGeneration() + ".");
-				return null;
+				// The mutation was a success, update the individual's info
+				individual.setSource(candidate).setMutation(m);
 			}
 		}
-		
-		// TODO
-		
-		return candidates;
 	}
 	
 	/**
@@ -439,7 +492,266 @@ public class ARCGeneticAlgorithm {
 	 */
 	private String mutateIndividual(Individual individual, TXLMutation mutation,
 			Logger l) {
-		return null;// TODO
+		
+		// Arguments check
+		if (individual == null || mutation == null) {
+			return null;
+		} if (l == null) {
+			l = new Logger();
+		}
+		
+		// Make sure there are actually files to mutate
+		String[] javaFiles = arc.getProject().getSourceFiles();
+		if (javaFiles == null || javaFiles.length == 0) {
+			l.fatalError("No Java files to mutate in the project!");
+			return null;
+		}
+		
+		// Make sure the individual's directory actually exists
+		String individualRoot = individual.getPath();
+		if (individualRoot == null || !(new File(individualRoot)).isDirectory()) {
+			l.fatalError("The individual's specified directory does not exist: '"
+					+ individualRoot + "'.");
+			return null;
+		}
+		
+		// Get the TXL arguments
+		String txlProg = arc.getSetting(ARC.SETTING_TXL);
+		String operatorDir = arc.getSetting(ARC.SETTING_TXL_DIR);
+		
+		// Build the directory path for the mutant
+		// i.e.: <mutant_dir>/<generation>/<id>/<operator>
+		String ds = arc.getSetting(ARC.SETTING_DIR_SEPARATOR);
+		String root = arc.getSetting(ARC.SETTING_MUTANT_DIR) + ds +
+				individual.getGeneration() + ds + individual.getId() +
+				ds + mutation.getMutationFile() + ds;
+		
+		// Check if this type of mutation has been run on this individual
+		File dir = new File(root);
+		if (dir.exists()) {
+			return root;
+		}
+		
+		// Create the root directory
+		if (!dir.mkdirs()) {
+			l.fatalError("Unable to create directory for mutation (path: '"
+					+ root + "').");
+			return null;
+		}
+		
+		// Mutate all the files using the mutation operator
+		if (!individualRoot.endsWith(ds)) {
+			individualRoot += ds;
+		}
+		for (String jf : javaFiles) {
+			
+			// Get the argument's values for the mutation of the specific file
+			String[] args = mutation.getArguments();
+			int n = (args == null)? 0 : args.length;
+			String[] argValues = new String[n];
+			if (args != null) {
+				for (int i = 0; i < n; i ++) {
+					String arg = args[i];
+					if (arg == null || arg.isEmpty()) {
+						argValues[i] = "";
+						continue;
+					}
+					
+					// TODO: use static analysis to get the class, method, variable
+					// information
+					if (arg.equals(TXLMutation.ARG_SYNC_VAR)) {
+						argValues[i] = "this";
+					}
+				}
+			}
+			
+			// Get the absolute path to the source file
+			String fullSrcPath = individualRoot + jf;
+			File src = new File(fullSrcPath);
+			if (!src.isFile()) {
+				l.warning("Unable to find source file: '" + fullSrcPath + "'.");
+				continue;
+			}
+			
+			// Create the parent directory, if required
+			String fullDstPath = root + jf;
+			File dstDir = (new File(fullDstPath)).getParentFile();
+			if (!dstDir.isDirectory() && !dstDir.mkdirs()) {
+				l.fatalError("Failed to make mutant output directory: '" +
+						dstDir.getAbsolutePath() + "'.");
+				return null;
+			}
+			
+			// Run TXL with the mutation operator
+			String cmd = mutation.getCommand(txlProg, operatorDir, fullSrcPath,
+					src.getName(), dstDir.getAbsolutePath(), argValues);
+			try {
+				Runtime.getRuntime().exec(cmd);
+			} catch (Exception e) {
+				e.printStackTrace();
+				l.fatalError("Failed to mutate '" + jf +
+						"' using the TXL mutation operator: " + mutation + "");
+				l.fatalError(e.getLocalizedMessage());
+				return null;
+			}
+		}
+		
+		return root;
+	}
+	
+	/**
+	 * Creates a mutant program for the specified individual based on the
+	 * mutated source files found in the mutant directory.
+	 * 
+	 * @param source
+	 * @param mutantDir
+	 * @param individual
+	 * @param l				the logger to track events.
+	 * @return true if and only if a mutant program was found which can be
+	 * compiled.
+	 * 
+	 * @since 1.0
+	 */
+	private boolean createMutantProgram(Individual source, String mutantDir,
+			Individual individual, Logger l) {
+		
+		// Check arguments
+		if (source == null || mutantDir == null || individual == null) {
+			return false;
+		} if (l == null) {
+			l = new Logger();
+		}
+		
+		// Get the possible files
+		String[] javaFiles = arc.getProject().getSourceFiles();
+		if (javaFiles == null || javaFiles.length == 0) {
+			return false;
+		}
+		List<File> files = FileUtils.find(mutantDir, ".*\\.java.*", true);
+		if (files.isEmpty()) {
+			return false;
+		}
+		
+		// Keep trying to create a program until successful or no files
+		String ds = arc.getSetting(ARC.SETTING_DIR_SEPARATOR);
+		String srcPath = source.getPath(), individualPath = individual.getPath();
+		String projectDir = arc.getSetting(ARC.SETTING_PROJECT_DIR);
+		if (!projectDir.endsWith(ds)) {
+			projectDir += ds;
+		}
+		while (!files.isEmpty()) {
+			
+			File mutant = files.remove((int) (Math.random() * files.size()));
+			
+			// Reconstruct the new individual
+			if (!ARCUtils.copyProjectSourceFiles(arc,
+					srcPath, projectDir, null)) {
+				continue;
+			}
+			
+			// Determine which source file it is
+			String relPath = null, mname = mutant.getName();
+			for (String jf : javaFiles) {
+				if (jf == null || jf.isEmpty()) {
+					continue;
+				}
+				String name = (new File(jf)).getName();
+				if (mname.contains(name)) {
+					relPath = jf;
+					break;
+				}
+			}
+			if (relPath == null) {
+				continue;
+			}
+			
+			// Copy the mutated file and compile it
+			FileUtils.copy(mutant.getAbsolutePath(), projectDir + relPath,
+					false);
+			ProjectCompiler compiler = new AntCompiler(projectDir,
+					arc.getSetting(ARC.SETTING_PROJECT_COMPILE_CMD),
+					arc.getSetting(ARC.SETTING_ANT));
+			Logger compileLog = compiler.compile();
+			if (compileLog.hasFatalError()) {
+				try {
+					mutant.delete();
+				} catch (Exception e) {}
+			}
+			
+			// Compiled successfully
+			else {
+				if (!ARCUtils.copyProjectSourceFiles(
+						arc, projectDir, individualPath, null)) {
+					continue; // failed to copy
+				}
+				return true;
+			}
+		}
+		l.debug("Could not find a program which compiles with the mutants in '"
+				+ mutantDir + "'.");
+		
+		return false;
+	}
+	
+	/**
+	 * Checks to see if an individual is the final solution (i.e. passes all
+	 * tests and passes additional test-suite executions). The individual will
+	 * only be tested further if all the initial tests were
+	 * {@link TestStatus#SUCCESS}.
+	 * 
+	 * @param individual	the individual to check.
+	 * @param l				the logger to keep track of events.
+	 * @return true if and only if ALL tests pass, including the additional
+	 * verification ones.
+	 * 
+	 * @since 1.0
+	 */
+	private boolean isFinalSolution(Individual individual, Logger l) {
+		
+		// No individual
+		if (individual == null) {
+			return false;
+		}
+		
+		// Check the test summary
+		TestingSummary summary = individual.getTestSummary();
+		if (summary == null) {
+			return false;
+		}
+		int n = summary.getNumberOfTestsRun();
+		if (n == 0) {
+			return false;
+		}
+		List<TestResult> successes = summary.getResultsFor(TestStatus.SUCCESS);
+		if (successes == null || successes.size() != n) { // there were failures
+			return false;
+		}
+		
+		if (l == null) {
+			l = new Logger();
+		}
+		
+		// Run more extensive tests on the individual
+		final int RUN_MULTIPLIER = 15, TEST_COUNT = RUN_MULTIPLIER * runs;
+		l.debug("Evaluating potential solution: " + individual + " against " +
+				TEST_COUNT + " test-suite executions.");
+		individual.test(arc, TEST_COUNT);
+		
+		// Check the results
+		summary = individual.getTestSummary();
+		if (summary == null) {
+			return false;
+		}
+		summary.getNumberOfTestsRun();
+		if (n != TEST_COUNT) {
+			return false;
+		}
+		successes = summary.getResultsFor(TestStatus.SUCCESS);
+		if (successes == null || successes.size() != n) { // there were failures
+			return false;
+		}
+		
+		return true;
 	}
 	
 	/**
@@ -622,11 +934,27 @@ public class ARCGeneticAlgorithm {
 	 * found a fix for the program.
 	 * 
 	 * @return true if and only if a solution was found.
+	 * @see #getSolution()
+	 * @since 1.0
 	 */
 	public boolean foundFix() {
 		return foundFix;
 	}
 	
+	/**
+	 * Gets the individual which was found to pass all tests in the project's
+	 * test-suite; including after further evaluation.
+	 * 
+	 * @return the individual representing the fixed project or null, if no
+	 * solution was found during the last GA run.
+	 * 
+	 * @see #foundFix()
+	 * @since 1.0
+	 */
+	public Individual getSolution() {
+		return solution;
+	}
+
 	/**
 	 * Gets the directory for a generation.
 	 * 

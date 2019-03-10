@@ -68,7 +68,7 @@ public class FileUtils {
 		// Source is a file
 		char ds = getDirectorySeparator(src);
 		if (s.isFile()) {
-			String dp = d.isFile()? dest : dest + ds + s.getName();
+			String dp = d.isDirectory()? dest + ds + s.getName() : dest;
 		    InputStream is = null;
 		    OutputStream os = null;
 		    try {
