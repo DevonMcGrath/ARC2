@@ -49,6 +49,9 @@ public class ARCRunner extends Thread {
 	/** A flag indicating if this ARC runner is finished executing. */
 	private boolean isFinished;
 	
+	/** A flag indicating if ARC found a valid solution. */
+	private boolean foundFix;
+	
 	/** The execution time, which is only equal to the amount of milliseconds
 	 * ARC took to finish if ARC has stopped. Otherwise, this value represents
 	 * the millisecond that the ARC runner started
@@ -95,6 +98,7 @@ public class ARCRunner extends Thread {
 		setArcPath(arcPath);
 		setProjectPath(projectPath);
 		this.isFinished = true;
+		this.l = new Logger();
 	}
 	
 	/**
@@ -107,6 +111,7 @@ public class ARCRunner extends Thread {
 	public void startARC() {
 		this.isFinished = false;
 		this.shouldStop = false;
+		this.foundFix = false;
 		this.executionTime = System.currentTimeMillis();
 		this.l = new Logger();
 		start();
@@ -170,6 +175,14 @@ public class ARCRunner extends Thread {
 			}
 		}
 
+
+		// Check if program was requested to terminate
+		if (shouldStop) {
+			l.fatalError("ARC was requested to stop.");
+			stopExecuting();
+			return;
+		}
+		
 		startNewPhase("File Checking");
 		
 		// Check if JUnit is defined
@@ -406,6 +419,7 @@ public class ARCRunner extends Thread {
 		}
 		ARCGeneticAlgorithm ga = new ARCGeneticAlgorithm(this, onFinish);
 		ga.run(l);
+		this.foundFix = ga.foundFix();
 		
 		// Stop executing, ARC is done
 		stopExecuting();
@@ -745,6 +759,17 @@ public class ARCRunner extends Thread {
 	 */
 	public boolean isFinished() {
 		return isFinished;
+	}
+	
+	/**
+	 * Gets the flag which indicates if ARC found a valid solution which has
+	 * no bugs.
+	 * 
+	 * @return true if and only if a valid solution was found.
+	 * @since 1.0
+	 */
+	public boolean foundFix() {
+		return foundFix;
 	}
 
 	/**

@@ -128,7 +128,7 @@ public class TXLMutation {
 	public boolean fixesDeadlocks() {
 		return fixesDeadlocks;
 	}
-	
+
 	/**
 	 * Gets the command to execute this TXL mutation operator.
 	 * 
@@ -218,6 +218,31 @@ public class TXLMutation {
 		return cmd;
 	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + ((mutationFile == null) ? 0 : mutationFile.hashCode());
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		TXLMutation other = (TXLMutation) obj;
+		if (mutationFile == null) {
+			if (other.mutationFile != null)
+				return false;
+		} else if (!mutationFile.equals(other.mutationFile))
+			return false;
+		return true;
+	}
+	
 	@Override
 	public String toString() {
 		return getClass().getSimpleName() + "[mutationName='" + mutationName

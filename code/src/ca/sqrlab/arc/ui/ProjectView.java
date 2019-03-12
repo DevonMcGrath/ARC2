@@ -64,6 +64,10 @@ public class ProjectView extends ARCView implements FinishListener {
 	
 	private JLabel errLabel;
 	
+	private JLabel exeTime;
+	
+	private JPanel status;
+	
 	private JComboBox<String> messageFilter;
 	
 	private JScrollPane logScrollPane;
@@ -124,10 +128,19 @@ public class ProjectView extends ARCView implements FinishListener {
 		this.messageFilter = new JComboBox<>(opts);
 		this.messageFilter.setSelectedIndex(opts.length - 1);
 		this.messageFilter.addActionListener(cl);
+		this.exeTime = new JLabel("0s");
+		this.status = new JPanel();
+		this.status.setToolTipText("Not started");
+		this.status.setBackground(Color.LIGHT_GRAY);
+		this.status.setBorder(BorderFactory.createEmptyBorder(5, 25, 5, 25));
 		JPanel m1 = new JPanel(new FlowLayout(FlowLayout.LEFT));
 		m1.setBackground(Color.WHITE);
 		m1.add(new JLabel("Filter:"));
 		m1.add(messageFilter);
+		m1.add(new JLabel("Status:"));
+		m1.add(status);
+		m1.add(new JLabel("Execution Time:"));
+		m1.add(exeTime);
 		this.logMessages = new JTextPane();
 		this.logMessages.setContentType("text/html");
 		this.logMessages.setBackground(Color.WHITE);
@@ -176,8 +189,37 @@ public class ProjectView extends ARCView implements FinishListener {
 	
 	@Override
 	public void onFinish(int id, Object obj) {
-		updateLog();
+		
+		// Update some UI components
+		Logger l = null;
+		boolean isFinished = true;
+		Color c = Color.LIGHT_GRAY;
+		String tooltip = "Not started.", exe = "0s";
+		if (runner != null) {
+			l = runner.getLogger();
+			isFinished = runner.isFinished();
+			exe = (runner.getExecutionTime() / 1000) + "s";
+			if (isFinished) {
+				if (l.hasFatalError()) {
+					c = Color.RED;
+					tooltip = "ARC exited with an error";
+				} else if (runner.foundFix()) {
+					c = Color.GREEN;
+					tooltip = "ARC finished and found a fixed program";
+				} else {
+					c = Color.RED;
+					tooltip = "ARC finished but could not find a solution";
+				}
+			} else {
+				c = Color.ORANGE;
+				tooltip = "ARC is still running";
+			}
+		}
+		this.exeTime.setText(exe);
+		this.status.setBackground(c);
+		this.status.setToolTipText(tooltip);
 		updateButtons();
+		updateLog();
 	}
 	
 	/**
