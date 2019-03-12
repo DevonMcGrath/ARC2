@@ -2,11 +2,13 @@ package ca.sqrlab.arc.ui;
 
 import java.awt.BorderLayout;
 import java.awt.Color;
+import java.awt.Desktop;
 import java.awt.FlowLayout;
 import java.awt.GridLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
+import java.util.ArrayList;
 import java.util.List;
 
 import javax.swing.BorderFactory;
@@ -23,6 +25,7 @@ import ca.sqrlab.arc.ARCRunner;
 import ca.sqrlab.arc.FinishListener;
 import ca.sqrlab.arc.Project;
 import ca.sqrlab.arc.io.FileUtils;
+import ca.sqrlab.arc.io.FileWriter;
 import ca.sqrlab.arc.tools.monitoring.Logger;
 import ca.sqrlab.arc.tools.monitoring.Message;
 import ca.sqrlab.arc.tools.monitoring.Phase;
@@ -52,6 +55,8 @@ public class ProjectView extends ARCView implements FinishListener {
 	private JButton changePrBtn;
 	
 	private JButton runBtn;
+	
+	private JButton saveBtn;
 	
 	private JLabel arcPathLabel;
 	
@@ -128,6 +133,7 @@ public class ProjectView extends ARCView implements FinishListener {
 		this.logMessages.setBackground(Color.WHITE);
 		this.logMessages.setBorder(BorderFactory.createEmptyBorder(8, 8, 8, 8));
 		this.logMessages.setEditable(false);
+		this.logMessages.setText("ARC has not been run yet.");
 		this.logScrollPane = new JScrollPane(logMessages);
 		middle.add(m1, BorderLayout.NORTH);
 		middle.add(logScrollPane, BorderLayout.CENTER);
@@ -150,10 +156,13 @@ public class ProjectView extends ARCView implements FinishListener {
 		this.changePrBtn.setToolTipText("Change the directory of the project");
 		this.runBtn = new JButton("Initialize");
 		this.runBtn.addActionListener(cl);
+		this.saveBtn = new JButton("Save Log");
+		this.saveBtn.addActionListener(cl);
 		this.errLabel = new JLabel();
 		this.errLabel.setForeground(Color.RED);
 		b2.add(changePrBtn);
 		b2.add(runBtn);
+		b2.add(saveBtn);
 		b2.add(errLabel);
 		bottom.add(b2);
 		
@@ -258,6 +267,19 @@ public class ProjectView extends ARCView implements FinishListener {
 		this.changePrBtn.setEnabled(cdEnabled);
 	}
 	
+	public boolean saveLog(String path) {
+		
+		// Build the html
+		final String TITLE = "ARC Output Log";
+		List<String> data = new ArrayList<>();
+		data.add("<!DOCTYPE html><html><head><title>" + TITLE + "</title>");
+		data.add("<meta name=\"viewport\", content=\"width=device-width, "
+				+ "initial-scale=1.0\" />");
+		data.add("</head><body>" + logMessages.getText() + "</body></html>");
+		
+		return FileWriter.write(path, data, false);
+	}
+	
 	public boolean changeProjectPath() {
 		
 		JFileChooser fc = new JFileChooser();
@@ -351,6 +373,26 @@ public class ProjectView extends ARCView implements FinishListener {
 			// The message filter was changed
 			else if (src == messageFilter) {
 				updateLog();
+			}
+			
+			// The save log button was clicked
+			else if (src == saveBtn) {
+				String path = FileUtils.asValidPath(arcPath);
+				String ds = File.pathSeparatorChar == ':'? "/" : "\\";
+				path += ds;
+				
+				final String FILE_NAME = "arc-log.html";
+				path += FILE_NAME;
+				if (saveLog(path)) {
+					try {
+						Desktop d = Desktop.getDesktop();
+						if (d != null) {
+							d.open(new File(path));
+						}
+					} catch (Exception err) {
+						err.printStackTrace();
+					}
+				}
 			}
 		}
 	}

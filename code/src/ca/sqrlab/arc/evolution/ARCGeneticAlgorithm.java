@@ -673,6 +673,10 @@ public class ARCGeneticAlgorithm {
 					arc.getSetting(ARC.SETTING_ANT));
 			Logger compileLog = compiler.compile();
 			if (compileLog.hasFatalError()) {
+				// FIXME: remove output from compiler
+				l.getPhases().get(l.getPhases().size() - 1)
+				.getMessages().addAll(compileLog.getPhases()
+						.get(0).getMessages());
 				try {
 					mutant.delete();
 				} catch (Exception e) {}
