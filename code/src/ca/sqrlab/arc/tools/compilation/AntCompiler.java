@@ -1,6 +1,7 @@
 package ca.sqrlab.arc.tools.compilation;
 
 import java.io.File;
+import java.util.List;
 
 import ca.sqrlab.arc.io.FileUtils;
 import ca.sqrlab.arc.io.ProcessResult;
@@ -96,6 +97,15 @@ public class AntCompiler extends ProjectCompiler {
 		
 		// Try to run the compile command
 		try {
+			
+			// Remove any class files; this avoids problems when there are java
+			// files which don't compile and it uses the cached result
+			List<File> classFiles = FileUtils.find(projectRoot, ".+\\.class", true);
+			for (File f : classFiles) {
+				f.delete();
+			}
+			
+			// Run the command
 			String cmd = antProcessPath + " " + compileTarget;
 			ProcessResult pr = new ProcessResult(Runtime.getRuntime().exec(
 					cmd, null, new File(projectRoot)));

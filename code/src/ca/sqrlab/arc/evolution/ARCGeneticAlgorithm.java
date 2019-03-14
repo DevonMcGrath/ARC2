@@ -700,12 +700,8 @@ public class ARCGeneticAlgorithm {
 					arc.getSetting(ARC.SETTING_ANT));
 			Logger compileLog = compiler.compile();
 			if (compileLog.hasFatalError()) {
-				// FIXME: remove output from compiler
-				/*l.getPhases().get(l.getPhases().size() - 1)
-				.getMessages().addAll(compileLog.getPhases()
-						.get(0).getMessages());*/
 				try {
-					//mutant.delete();
+					mutant.delete();
 				} catch (Exception e) {}
 			}
 			
@@ -717,8 +713,7 @@ public class ARCGeneticAlgorithm {
 						arc, projectDir, individualPath, null)) {
 					continue; // failed to copy
 				}
-				individual.setMutation(m);
-				
+
 				return true;
 			}
 		}
@@ -767,7 +762,7 @@ public class ARCGeneticAlgorithm {
 		}
 		
 		// Run more extensive tests on the individual
-		final int RUN_MULTIPLIER = 15, TEST_COUNT = RUN_MULTIPLIER * runs;
+		final int RUN_MULTIPLIER = 10, TEST_COUNT = RUN_MULTIPLIER * runs;
 		l.debug("Evaluating potential solution: " + individual + " against " +
 				TEST_COUNT + " test-suite executions.");
 		individual.test(arc, TEST_COUNT);
@@ -775,13 +770,16 @@ public class ARCGeneticAlgorithm {
 		// Check the results
 		summary = individual.getTestSummary();
 		if (summary == null) {
+			l.debug("Failed to re-test.");
 			return false;
 		}
-		summary.getNumberOfTestsRun();
+		n = summary.getNumberOfTestsRun();
 		if (n != TEST_COUNT) {
+			l.debug("Failed to re-test fully. Only ran " + n + " tests.");
 			return false;
 		}
 		successes = summary.getResultsFor(TestStatus.SUCCESS);
+		l.debug("Successes: " + (successes == null? 0 : successes.size()) + "/" + n);
 		if (successes == null || successes.size() != n) { // there were failures
 			return false;
 		}

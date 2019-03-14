@@ -169,6 +169,8 @@ public class TestRunner {
 			t = System.currentTimeMillis() - t;
 		}
 		
+		tr.setProgramTimeMillis(t);
+		
 		// Get the info
 		ProcessResult pr = new ProcessResult(p);
 		pr.readStreams();
@@ -187,12 +189,13 @@ public class TestRunner {
 			// Find the number of tests and failures
 			Pattern pattern = Pattern.compile("Tests run: (\\d+),\\s+Failures: (\\d+)");
 			Matcher m = pattern.matcher(stdout);
-			boolean parsingErr = false;
+			boolean parsingErr = false, foundResults = false;
 			if (m.find()) {
 				try {
 					tr.tests = Integer.parseInt(m.group(1));
 					tr.failures = Integer.parseInt(m.group(2));
 					tr.successes = tr.tests - tr.failures;
+					foundResults = true;
 				} catch (Exception e) {
 					e.printStackTrace();
 					tr.addError("Error: unable to fully parse # of tests and failures.");
@@ -207,11 +210,18 @@ public class TestRunner {
 				try {
 					tr.successes = Integer.parseInt(m.group(1));
 					tr.tests = tr.successes;
+					foundResults = true;
 				} catch (Exception e) {
 					e.printStackTrace();
 					tr.addError("Error: unable to fully parse # of successes.");
 					parsingErr = true;
 				}
+			}
+			
+			// No results found
+			if (!foundResults) {
+				tr.setStatus(TestStatus.INVALID);
+				return;
 			}
 			
 			// If there is failures, get the tests which failed
@@ -297,8 +307,6 @@ public class TestRunner {
 				tr.setStatus(TestStatus.DEADLOCK);
 			}
 		}
-		
-		tr.setProgramTimeMillis(t);
 	}
 	
 	public ARC getARC() {
