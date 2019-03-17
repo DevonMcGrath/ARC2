@@ -1,0 +1,27 @@
+# ARC Config File
+# Author: Devon McGrath
+# Syntax:
+#   Lines that start with '#' are ignored.
+#   Empty lines are also ignored.
+#   Each line is a key-value pair in the syntax: <key>=<value>
+#       For example, JAVA=/usr/bin/java
+#   To create values dependent on others, use ${<key>}.
+#       For example, if ${ROOT}=./src then:
+#       ${ROOT}/lib would evaluate to:
+#       ./src/lib
+#   Boolean values only require the key to be present for the value to be set.
+#
+# Order for determining actual value:
+# If both the ARC Config File and ARC Project Config File have the same key,
+# the project file's value will be used.
+#
+# Invalid keys:
+# S             (always set to the system path separator, i.e. / or \)
+# ROOT          (always set to the directory where the ARC Config File is located)
+# PROJECT_DIR   (always set to the directory where ARC is storing the project)
+# ARC_DIR       (always set to ${ROOT}${S}ARC, which is used to place files and
+#               directories relevant to the run in)
+# LIB_DIR       (always set to ${ROOT}${S}lib, which contains all the libraries
+#               such as JUnit and the mutation operators)
+# TMP_DIR       (used by ARC to store the individuals during the GA phase)
+# MUTANT_DIR    (used by ARC to store all mutations of individuals)
