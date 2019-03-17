@@ -1,0 +1,59 @@
+target = SoftWareVerificationHW
+target.args = out.txt,average
+
++classpath=class/;
++sourcepath=source/;
+
+# 2. What kind of search are we using? MostBlocked is best for deadlocks.  Interleavings is
+#    for deadlocks and data races.
+
+#search.class = gov.nasa.jpf.search.heuristic.MostBlocked
+search.class = gov.nasa.jpf.search.heuristic.Interleaving
+#search.class = gov.nasa.jpf.search.heuristic.RandomHeuristic
+
+# 3. Scheduler
+# See "Iterative context bounding for systematic testing of multithreaded programs" 2007
+# Small number of (Scheduler) preemptions needed: 2 was used in the paper
+
+vm.scheduler_factory.class=gov.nasa.jpf.vm.ContextBoundingSchedulerFactory
+cg.max_number_of_preemptions=4
+
+# 4. Serializers: These serializers are better at finding data races and deadlocks.
+#    Try adaptive before top-frame.
+
+vm.serializer.class = gov.nasa.jpf.vm.serialize.AdaptiveSerializer
+#vm.serializer.class = gov.nasa.jpf.vm.serialize.TopFrameSerializer
+
+# 5. Does the SUT use arrays with threads?  If so we need this argument to detect data
+#    races involving them
+
+cg.threads.break_arrays=true
+
+# 6. Incremental modelling
+
+# 6a. jpf-symbc-memoization
+
+#6b. jpf-regression
+
+#listener+=gov.nasa.jpf.regression.listener.DependenceListener,
+#output.loc = ${jpf-core}/src/ARC/pingpong/source
+
+# 7. Monitoring, statistics, ...
+
+listener+=gov.nasa.jpf.listener.SearchMonitor,
+jpf.monitor.interval = 10000
+listener+=gov.nasa.jpf.listener.StateSpaceAnalyzer,
+listener+=gov.nasa.jpf.listener.StateCountEstimator,
+jpf.state_count_estimator.log_period = 1000
+
+# 8. Data-race listener: "trace" output can be HUGE
+
+listener+=gov.nasa.jpf.listener.PreciseRaceDetector,
+#report.console.property_violation=error, trace
+report.console.property_violation=error
+
+# 9. Deadlock analyzer is a property-specific trace report generator
+
+listener+=gov.nasa.jpf.listener.DeadlockAnalyzer,
+deadlock.max_history=5
+deadlock.format=essential

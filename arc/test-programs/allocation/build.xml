@@ -1,0 +1,76 @@
+<project name="Allocation-IBM-benchmark" default="dist" basedir=".">
+    <description>
+        Build for allocation from the IBM benchmark
+    </description>
+  <!-- set global properties for this build -->
+  <property name="src" location="source"/>
+  <property name="class"  location="class"/>
+  <property name="current"  location="."/>
+  <property name="tst-dir"  location="test"/>
+  <property name="talk"  location="true"/>
+
+  <path id="classpath.base">
+    <pathelement location="${current}" />
+    <pathelement location="${class}" />
+    <pathelement location="${src}" />
+  </path>
+  <path id="classpath.test">
+    <pathelement location="../lib/junit-4.8.1.jar" />
+    <pathelement location="${tst-dir}" />
+    <path refid="classpath.base" />
+  </path>
+
+  <target name="init">
+    <!-- Create the time stamp -->
+    <tstamp/>
+    <!-- Create the build directory structure used by compile -->
+  </target>
+
+  <target name="compile-part2" depends="init"
+        description="compile the source " >
+    <!-- Compile the java code from ${src} into ${build} -->
+    <mkdir dir="${class}" />
+    <javac srcdir="${src}" 
+           destdir="${class}"
+           />
+  </target>
+
+  <target name="compile" depends="compile-part2">
+    <javac srcdir="${tst-dir}"
+           verbose="${TALK}"
+           >
+      <classpath refid="classpath.test"/>
+    </javac>
+  </target>
+
+  <target name="test" depends="compile" >
+    <junit fork="yes">
+
+        <!-- THE TEST SUITE FILE-->
+        <test name = "AllocationTest"/>
+
+        <!-- NEED TO BE THE CLASS FILES (NOT ABSOLUTE) -->
+        <classpath refid="classpath.test"/>
+        <formatter type="plain" usefile="false" /> <!-- to screen -->
+    </junit>
+  </target>
+
+
+  <!-- Stuff below this line isn't critical -->
+  <target name="clean-compile-test">
+    <delete verbose="${TALK}">
+      <fileset dir="${tst-dir}" includes="**/*.class" />
+    </delete>
+  </target>
+
+  <target name="test-notworking" depends="compile">
+    <junit>
+      <classpath refid="classpath.test" />
+      <formatter type="brief" usefile="false" />
+      <test name="AllocationTest.java" />
+    </junit>
+  </target>
+
+  <target name="all" depends="test" />
+  <target name="clean" depends="clean-compile-test" />
+</project>

@@ -1,0 +1,16 @@
+# ARC Project File
+# Author: Devon McGrath
+# Syntax:
+#   Lines that start with '#' are ignored.
+#   Empty lines are also ignored.
+#   Each line is a key-value pair in the syntax: <key>=<value>
+#       For example, JAVA=/usr/bin/java
+#   To create values dependent on others, use ${<key>}.
+#       For example, if ${ROOT}=./src then:
+#       ${ROOT}/lib would evaluate to:
+#       ./src/lib
+#   Boolean values only require the key to be present for the value to be set.
+#
+# Order for determining actual value:
+# If both the ARC Config File and ARC Project Config File have the same key,
+# the project file's value will be used.
