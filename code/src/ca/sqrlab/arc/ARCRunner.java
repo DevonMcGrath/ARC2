@@ -4,11 +4,13 @@ import java.io.File;
 import java.util.List;
 
 import ca.sqrlab.arc.evolution.ARCGeneticAlgorithm;
+import ca.sqrlab.arc.evolution.Individual;
 import ca.sqrlab.arc.io.FileUtils;
 import ca.sqrlab.arc.java.JavaFile;
 import ca.sqrlab.arc.java.JavaParser;
 import ca.sqrlab.arc.tools.ARCUtils;
 import ca.sqrlab.arc.tools.AntBuildFile;
+import ca.sqrlab.arc.tools.instrumentation.CFlashInstrumentor;
 import ca.sqrlab.arc.tools.monitoring.Logger;
 import ca.sqrlab.arc.tools.monitoring.Phase;
 import ca.sqrlab.arc.tools.mutation.TXLMutation;
@@ -405,6 +407,12 @@ public class ARCRunner extends Thread {
 			this.arc.setSetting(ARC.SETTING_PROJECT_TESTSUITE, ts);
 		}
 		
+		// Get the C-FLASH TXL file directory
+		if (!getCFlashTxlDir()) {
+			stopExecuting();
+			return;
+		}
+		
 		// Get the timeout for the program
 		if (!getTimeout()) {
 			stopExecuting();
@@ -420,6 +428,11 @@ public class ARCRunner extends Thread {
 		ARCGeneticAlgorithm ga = new ARCGeneticAlgorithm(this, onFinish);
 		ga.run(l);
 		this.foundFix = ga.foundFix();
+		
+		// ARC found a solution, copy it
+		if (foundFix) {
+			setOutput(ga);
+		}
 		
 		// Stop executing, ARC is done
 		stopExecuting();
@@ -726,6 +739,132 @@ public class ARCRunner extends Thread {
 		this.arc.setSetting(ARC.SETTING_TIMEOUT_MILLIS, "" + average);
 		
 		return true;
+	}
+	
+	/**
+	 * Gets the C-FLASH TXL directory path, if it does not exist already.
+	 * 
+	 * @return true if and only if the C-FLASH TXL directory is valid or a
+	 * valid directory was found.
+	 * @since 1.0
+	 */
+	private boolean getCFlashTxlDir() {
+		
+		// Check if the setting exists
+		String dir = arc.getSetting(ARC.SETTING_CFLASH_TXL_DIR);
+		String ds = arc.getSetting(ARC.SETTING_DIR_SEPARATOR);
+		String[] files = {CFlashInstrumentor.ANNOTATE_FILE,
+				CFlashInstrumentor.NOISE_FILE};
+		boolean find = false;
+		if (dir == null || dir.isEmpty()) {
+			l.warning("No setting for '" + ARC.SETTING_CFLASH_TXL_DIR +
+					"'. Will acquire dynamically...");
+			find = true;
+		}
+		
+		// Check if it is a directory
+		else if (!new File(dir).isDirectory()) {
+			l.warning("Invalid setting for '" + ARC.SETTING_CFLASH_TXL_DIR +
+					"'. Will acquire dynamically...");
+			find = true;
+		}
+		
+		// Valid, but check for files
+		else {
+			String base = dir;
+			if (!base.endsWith(ds)) {
+				base += ds;
+			}
+			for (String f : files) {
+				if (!(new File(base + f)).isFile()) {
+					l.warning("C-FLASH missing file: " + f);
+					find = true;
+				}
+			}
+			
+			// Missing a file
+			if (find) {
+				l.warning("Setting value for '" + ARC.SETTING_CFLASH_TXL_DIR +
+					"' (" + dir + ") did not contain all the required files. "
+							+ "Will acquire dynamically...");
+			}
+		}
+		
+		// Try to find C-Flash
+		if (find) {
+			
+			// Search the LIB folder
+			String lib = arc.getSetting(ARC.SETTING_LIB_DIR);
+			List<File> cff = FileUtils.find(lib,
+					CFlashInstrumentor.NOISE_FILE.replace(".", "\\."), true);
+			if (cff == null || cff.isEmpty()) {
+				l.fatalError("Unable to find C-FLASH TXL directory.");
+				return false;
+			}
+			
+			// Validate that the other files are there too
+			File file = cff.get(0);
+			dir = file.getParentFile().getAbsolutePath();
+			String base = dir;
+			boolean valid = true;
+			if (!base.endsWith(ds)) {
+				base += ds;
+			}
+			for (String f : files) {
+				if (!(new File(base + f)).isFile()) {
+					valid = false;
+				}
+			}
+			
+			
+			if (!valid) { // Failed to find at least one file
+				l.fatalError("Unable to find C-FLASH TXL directory.");
+			} else { // success
+				l.debug("C-FLASH TXL directory: '" + dir + "'.");
+				this.arc.setSetting(ARC.SETTING_CFLASH_TXL_DIR, dir);
+			}
+			
+			return valid;
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Creates a copy of the solution which the genetic algorithm found. If no
+	 * solution was found, then this method does nothing.
+	 * 
+	 * @param ga	the genetic algorithm, after it was executed.
+	 * @since 1.0
+	 */
+	private void setOutput(ARCGeneticAlgorithm ga) {
+		
+		// Nothing to do
+		if (ga == null || !ga.foundFix() || ga.getSolution() == null) {
+			return;
+		}
+		
+		startNewPhase("Output");
+		String dir = arc.getSetting(ARC.SETTING_OUTPUT_DIR);
+		if (dir == null || dir.isEmpty()) {
+			dir = arc.formatWithSettings(ARC.DEFAULT_OUTPUT_DIR);
+		}
+		Individual solution = ga.getSolution();
+		l.debug("Solution: " + solution);
+		l.debug("Output Directory: '" + dir + "'.");
+		
+		// Check if the directory needs to be created
+		File o = new File(dir);
+		if (!o.isDirectory() && !o.mkdirs()) {
+			l.fatalError("Unable to create output directory.");
+			return;
+		}
+		
+		// Copy the entire project first
+		FileUtils.copy(arc.getSetting(ARC.SETTING_PROJECT_DIR), dir, true);
+		
+		// Now, copy the source files
+		ARCUtils.copyProjectSourceFiles(arc, solution.getPath(), dir, null);
 	}
 	
 	/**

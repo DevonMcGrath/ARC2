@@ -7,6 +7,9 @@ import java.util.List;
 import ca.sqrlab.arc.ARC;
 import ca.sqrlab.arc.Project;
 import ca.sqrlab.arc.tools.ARCUtils;
+import ca.sqrlab.arc.tools.instrumentation.CFlashInstrumentor;
+import ca.sqrlab.arc.tools.instrumentation.Instrumentor;
+import ca.sqrlab.arc.tools.monitoring.Logger;
 import ca.sqrlab.arc.tools.mutation.TXLMutation;
 import ca.sqrlab.arc.tools.testing.TestResult;
 import ca.sqrlab.arc.tools.testing.TestRunner;
@@ -91,6 +94,15 @@ public class Individual implements Comparable<Individual> {
 		// Copy over the project
 		if (!ARCUtils.copyProjectSourceFiles(arc, path,
 				arc.getSetting(ARC.SETTING_PROJECT_DIR), null)) {
+			return false;
+		}
+		
+		// Instrument the project
+		Instrumentor instrumentor = new CFlashInstrumentor(
+				arc.getSetting(ARC.SETTING_CFLASH_TXL_DIR),
+				arc.getSetting(ARC.SETTING_TXL));
+		Logger ip = instrumentor.instrument(arc.getProject());
+		if (ip.hasFatalError()) {
 			return false;
 		}
 		

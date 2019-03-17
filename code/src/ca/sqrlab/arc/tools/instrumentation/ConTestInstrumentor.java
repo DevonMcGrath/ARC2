@@ -3,11 +3,13 @@ package ca.sqrlab.arc.tools.instrumentation;
 import java.io.File;
 import java.util.List;
 
+import ca.sqrlab.arc.ARC;
+import ca.sqrlab.arc.Project;
 import ca.sqrlab.arc.io.FileUtils;
 import ca.sqrlab.arc.io.ProcessResult;
 import ca.sqrlab.arc.java.JavaFile;
 import ca.sqrlab.arc.java.JavaProject;
-import ca.sqrlab.arc.tools.ProcessStatus;
+import ca.sqrlab.arc.tools.monitoring.Logger;
 
 public class ConTestInstrumentor extends Instrumentor {
 	
@@ -19,30 +21,29 @@ public class ConTestInstrumentor extends Instrumentor {
 	
 	private String javaPath;
 	
-	public ConTestInstrumentor(String projectRoot,
-			String contestJar, String cfparseJar, String projectClassDir) {
-		super(projectRoot);
+	public ConTestInstrumentor(String contestJar,
+			String cfparseJar, String projectClassDir) {
 		this.contestJar = contestJar;
 		this.cfparseJar = cfparseJar;
 		this.projectClassDir = projectClassDir;
 		setJavaPath(null);
 	}
 	
-	public ConTestInstrumentor(String projectRoot,
-			String contestJar, String cfparseJar, String projectClassDir,
-			String javaPath) {
-		super(projectRoot);
+	public ConTestInstrumentor(String contestJar,
+			String cfparseJar, String projectClassDir, String javaPath) {
 		this.contestJar = contestJar;
 		this.cfparseJar = cfparseJar;
+		this.projectClassDir = projectClassDir;
 		setJavaPath(javaPath);
 	}
 
 	@Override
-	protected void runInstrumentation(ProcessStatus result) {
+	protected void runInstrumentation(Logger result, Project project) {
 		
 		File dir = new File(projectClassDir);
 		
 		// Get all the files
+		String projectRoot = project.getSetting(ARC.SETTING_PROJECT_DIR);
 		JavaProject jp = new JavaProject(projectRoot);
 		List<JavaFile> files = jp.getJavaFiles();
 		String classes = "";
@@ -50,9 +51,8 @@ public class ConTestInstrumentor extends Instrumentor {
 			classes += f.getClassfileName() + " ";
 		}
 		if (files.isEmpty()) {
-			result.setFatalErrorMessage("No input files in directory '" +
+			result.fatalError("No input files in directory '" +
 					projectRoot + "'.");
-			result.setFatalError(true);
 			return;
 		}
 		
@@ -61,14 +61,13 @@ public class ConTestInstrumentor extends Instrumentor {
 		char s = File.pathSeparatorChar;
 		String cmd = javaPath + " -cp ." + s + cfparseJar + s +
 				contestJar + " com.ibm.contest.instrumentation.Instrument " + classes;
-		result.addInfo("Instrumentation Command: " + cmd);
+		result.debug("Instrumentation Command: " + cmd);
 		try {
 			p = Runtime.getRuntime().exec(cmd, null, dir);
 		} catch (Exception e) {
-			result.setFatalErrorMessage(
+			result.fatalError(
 					"Instrument process failed: " + e.getLocalizedMessage());
 			result.setFatalError(true);
-			e.printStackTrace();
 			return;
 		}
 		
@@ -83,19 +82,18 @@ public class ConTestInstrumentor extends Instrumentor {
 				msg += "Missing instrumented class: '" + f.getClassName() + "'\n";
 			}
 		}
-		result.setResult(pr);
-		result.addInfo("STDOUT='" + stdout + "'");
-		result.addInfo("STDERR='" + stderr + "'");
+		result.debug("STDOUT='" + stdout + "'");
+		result.debug("STDERR='" + stderr + "'");
 		if (!msg.isEmpty()) { // an error occurred
-			result.setFatalErrorMessage(msg.substring(0, msg.length() - 1));
+			result.fatalError(msg.substring(0, msg.length() - 1));
 			result.setFatalError(true);
 		} else { // all classes were instrumented
-			result.addInfo("Instrumentation successful.");
+			result.debug("Instrumentation successful.");
 		}
 	}
 
 	@Override
-	protected void checkDependencies(ProcessStatus result) {
+	protected void checkDependencies(Logger result) {
 		
 		// Check ConTest files
 		String fatalError = "";
@@ -129,8 +127,7 @@ public class ConTestInstrumentor extends Instrumentor {
 		}
 		
 		if (!fatalError.isEmpty()) {
-			result.setFatalError(true);
-			result.setFatalErrorMessage(fatalError);
+			result.fatalError(fatalError);
 		}
 	}
 

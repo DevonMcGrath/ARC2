@@ -340,6 +340,7 @@ public class ARCGeneticAlgorithm {
 				l.warning("Unable to run tests for individual " + individual);
 				failed ++;
 			}
+			l.debug("Score: " + individual.getScore());
 			
 			// Check if it is the solution
 			if (isFinalSolution(individual, l)) {
@@ -803,13 +804,13 @@ public class ARCGeneticAlgorithm {
 		
 		// Determine all the possible individuals which can be mutated
 		List<Individual> candidates = new ArrayList<>();
-		for (int i = 1; i < n; i ++) {
+		for (int i = n - 1; i >= 1; i --) {
 			candidates.addAll(generations.get(i).getBetter(original));
 		}
 		if (candidates.isEmpty()) { // no candidates found
 			
 			// Try to find ones which perform the same as the original
-			for (int i = 1; i < n; i ++) {
+			for (int i = n - 1; i >= 1; i --) {
 				candidates.addAll(generations.get(i).getBetterOrSame(original));
 			}
 			if (candidates.isEmpty()) { // none found still; add the original

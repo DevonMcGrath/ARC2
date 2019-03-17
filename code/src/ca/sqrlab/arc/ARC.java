@@ -111,6 +111,18 @@ public class ARC extends SettingsManager {
 	 * files). */
 	public static final String SETTING_PROJECT_SOURCE_DIR = "PROJECT_SRC_DIR";
 	
+	/** The setting name for the path to the TXL files used by C-FLASH. */
+	public static final String SETTING_CFLASH_TXL_DIR = "CFLASH_TXL_DIR";
+	
+	/** The setting name for the path to the directory which will contain the
+	 * fixed program, if one was found. */
+	public static final String SETTING_OUTPUT_DIR = "OUTPUT_DIR";
+	
+	/** The default directory in which a solution will be placed if one is
+	 * found by ARC. */
+	public static final String DEFAULT_OUTPUT_DIR = "${" + SETTING_ROOT +
+			"}${" + SETTING_DIR_SEPARATOR + "}output";
+	
 	/** The project for ARC to run. */
 	private Project project;
 	
@@ -224,6 +236,7 @@ public class ARC extends SettingsManager {
 		setSetting("CONTEST_TIMEOUT_MULTIPLIER", "15");
 		setSetting(SETTING_TIMEOUT_MILLIS, "300000");
 		setSetting(SETTING_TIMEOUT_MULTIPLIER, "15");
+		setSetting(SETTING_OUTPUT_DIR, DEFAULT_OUTPUT_DIR);
 		
 		// Genetic Algorithm defaults
 		setSetting(SETTING_POPULATION_COUNT,
@@ -307,6 +320,8 @@ public class ARC extends SettingsManager {
 		this.project = project;
 		if (project != null) {
 			project.setSetting(SETTING_ROOT, root);
+			project.setSetting(SETTING_PROJECT_DIR,
+					getSetting(SETTING_PROJECT_DIR));
 		}
 	}
 	
