@@ -67,3 +67,8 @@ Once a valid project directory is selected, you can now start running the ARC2 g
 ARC2 can be stopped at any time by clicking `Stop ARC`. ARC2 will not stop immediately but there are numerous points where ARC2 checks if it should stop executing.
 
 In addition, at any time the current log can be saved by clicking `Save Log`. An HTML file will be saved in the ARC directory and opened by the default browser.
+
+## Final Output
+If ARC2 is able to find a valid solution which meets extended testing requirements, the status colour will turn green. The individual which was found to be the solution will also be copied to an output directory - which will be denoted in the log.
+
+![ARC2 successful run using the Ping-Pong test program](resources/images/ARC2_Successful_Output.png)
