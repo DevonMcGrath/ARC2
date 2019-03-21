@@ -34,6 +34,10 @@ public class ARCGeneticAlgorithm {
 	 * indicate an event has occurred in the genetic algorithm. */
 	public static final int GENETIC_ALGORITHM_ID = 314159;
 	
+	/** The minimum number of test-suite executions to run during extended
+	 * validation. */
+	public static final int MIN_VALIDATION_TESTS = 150;
+	
 	/** The default number of individuals for each generation. */
 	public static final int DEFAULT_POPULATION_COUNT = 30;
 	
@@ -763,7 +767,8 @@ public class ARCGeneticAlgorithm {
 		}
 		
 		// Run more extensive tests on the individual
-		final int RUN_MULTIPLIER = 10, TEST_COUNT = RUN_MULTIPLIER * runs;
+		final int RUN_MULTIPLIER = 10;
+		final int TEST_COUNT = Math.max(RUN_MULTIPLIER * runs, MIN_VALIDATION_TESTS);
 		l.debug("Evaluating potential solution: " + individual + " against " +
 				TEST_COUNT + " test-suite executions.");
 		individual.test(arc, TEST_COUNT);
