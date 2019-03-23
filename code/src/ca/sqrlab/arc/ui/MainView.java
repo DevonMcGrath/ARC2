@@ -24,6 +24,8 @@ public class MainView extends ARCView {
 	
 	private String arcPath;
 	
+	private String projectPath;
+	
 	private boolean canContinue;
 	
 	private JLabel pathLabel;
@@ -40,6 +42,11 @@ public class MainView extends ARCView {
 		super(new BorderLayout());
 		init();
 		setArcPath(arcPath);
+	}
+	
+	public MainView(String arcPath, String projectPath) {
+		this(arcPath);
+		this.projectPath = projectPath;
 	}
 	
 	private void init() {
@@ -101,6 +108,14 @@ public class MainView extends ARCView {
 		this.updateButtons();
 	}
 	
+	public String getProjectPath() {
+		return projectPath;
+	}
+
+	public void setProjectPath(String projectPath) {
+		this.projectPath = projectPath;
+	}
+
 	public void updateButtons() {
 		
 		// Check if the directory has been initialized for ARC
@@ -149,7 +164,7 @@ public class MainView extends ARCView {
 				
 				// Continue to main part of ARC
 				else {
-					window.setView(new ProjectView(arcPath));
+					window.setView(new ProjectView(arcPath, projectPath));
 				}
 			}
 		}

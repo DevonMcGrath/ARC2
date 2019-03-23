@@ -9,6 +9,7 @@ import ca.sqrlab.arc.io.FileUtils;
 import ca.sqrlab.arc.java.JavaFile;
 import ca.sqrlab.arc.tools.ARCUtils;
 import ca.sqrlab.arc.tools.AntBuildFile;
+import ca.sqrlab.arc.tools.SettingsManager;
 import ca.sqrlab.arc.tools.instrumentation.CFlashInstrumentor;
 import ca.sqrlab.arc.tools.monitoring.Logger;
 import ca.sqrlab.arc.tools.monitoring.Phase;
@@ -63,8 +64,15 @@ public class ARCRunner extends Thread {
 	 * (using {@link System#currentTimeMillis()}). */
 	private long executionTime;
 	
+	/** The execution time, in milliseconds, ARC executed the genetic
+	 * algorithm for. */
+	private long gaExecutionTime;
+	
 	/** The instance of ARC with all the settings. */
 	private ARC arc;
+	
+	/** The reference to the genetic algorithm. */
+	private ARCGeneticAlgorithm ga;
 	
 	/** The logger for ARC to keep track of all events. */
 	private Logger l;
@@ -78,6 +86,9 @@ public class ARCRunner extends Thread {
 	/** The listener which will receive updates every time a phase is completed
 	 * in ARC. */
 	private FinishListener onFinish;
+	
+	/** Additional settings for ARC during its execution. */
+	private SettingsManager extraSettings;
 	
 	/**
 	 * Creates an ARC runner with the default ARC and project directories.
@@ -110,6 +121,7 @@ public class ARCRunner extends Thread {
 	 * Starts running ARC asynchronously. Note: this method should be used
 	 * instead of {@link #start()}.
 	 * 
+	 * @see #startARCSync()
 	 * @see #stopARC()
 	 * @since 1.0
 	 */
@@ -118,8 +130,31 @@ public class ARCRunner extends Thread {
 		this.shouldStop = false;
 		this.foundFix = false;
 		this.executionTime = System.currentTimeMillis();
+		this.gaExecutionTime = 0;
+		this.ga = null;
 		this.l = new Logger();
 		start();
+	}
+	
+	/**
+	 * Starts running ARC synchronously. This should only be used when ARC
+	 * does not require any user interface. Signaling ARC to stop via
+	 * {@link #stopARC()} works, however, it must be done from an alternate
+	 * thread than the caller of this method.
+	 * 
+	 * @see #startARC()
+	 * @see #stopARC()
+	 * @since 1.0
+	 */
+	public void startARCSync() {
+		this.isFinished = false;
+		this.shouldStop = false;
+		this.foundFix = false;
+		this.executionTime = System.currentTimeMillis();
+		this.gaExecutionTime = 0;
+		this.ga = null;
+		this.l = new Logger();
+		run();
 	}
 	
 	@Override
@@ -155,6 +190,7 @@ public class ARCRunner extends Thread {
 		// Create ARC
 		this.arc = new ARC(arcPath, p);
 		this.arc.loadSettings();
+		this.arc.updateSettings(extraSettings);
 		AntBuildFile bf = p.getBuildFile();
 		
 		// Check if the TXL operator directory is defined
@@ -429,8 +465,10 @@ public class ARCRunner extends Thread {
 			this.onFinish.onFinish(ARC_PHASE_FINISHED_ID,
 					phases.get(phases.size() - 1));
 		}
-		ARCGeneticAlgorithm ga = new ARCGeneticAlgorithm(this, onFinish);
-		ga.run(l);
+		this.ga = new ARCGeneticAlgorithm(this, onFinish);
+		this.gaExecutionTime = System.currentTimeMillis();
+		this.ga.run(l);
+		this.gaExecutionTime = System.currentTimeMillis() - gaExecutionTime;
 		this.foundFix = ga.foundFix();
 		
 		// ARC found a solution, copy it
@@ -1016,5 +1054,55 @@ public class ARCRunner extends Thread {
 	 */
 	public Logger getLogger() {
 		return l;
+	}
+
+	/**
+	 * Gets the execution time in milliseconds of the ARC genetic algorithm. If
+	 * the genetic algorithm hasn't started executing yet, the value returned
+	 * is 0. Should the GA still be executing, the value returned is the result
+	 * from {@link System#currentTimeMillis()} just before it was started.
+	 * 
+	 * @return the GA execution time in milliseconds.
+	 * @since 1.0
+	 */
+	public long getGAExecutionTime() {
+		return gaExecutionTime;
+	}
+
+	/**
+	 * Gets the reference to the genetic algorithm which ARC is executing or
+	 * has executed during its last run.
+	 * 
+	 * @return the genetic algorithm.
+	 * @since 1.0
+	 */
+	public ARCGeneticAlgorithm getGeneticAlgorithm() {
+		return ga;
+	}
+
+	/**
+	 * Gets the additional settings ARC will use during its execution.
+	 * 
+	 * @return the settings.
+	 * @see #setExtraSettings(SettingsManager)
+	 * @since 1.0
+	 */
+	public SettingsManager getExtraSettings() {
+		return extraSettings;
+	}
+
+	/**
+	 * Sets any additional settings for ARC to use during its execution. Note:
+	 * this must be called before ARC is started.
+	 * 
+	 * @param extraSettings	additional settings.
+	 * @return a reference to this ARC runner.
+	 * 
+	 * @see #getExtraSettings()
+	 * @since 1.0
+	 */
+	public ARCRunner setExtraSettings(SettingsManager extraSettings) {
+		this.extraSettings = extraSettings;
+		return this;
 	}
 }

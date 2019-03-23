@@ -1,0 +1,44 @@
+# ARC2 Experiment file
+# [Experiment Group]
+NAME=# of test-suite executions vs generation size (Ping-Pong)
+RUNS=5
+ARC_PATH=/Users/devon/Documents/school/thesis/new-arc
+PROJECT_PATH=/Users/devon/Documents/school/thesis/new-arc/input
+MAX_GENERATIONS=15
+
+# [Experiment]
+NAME=LOW/HIGH (5/30)
+RUN_COUNT=5
+POPULATION_COUNT=30
+
+# [Experiment]
+NAME=MEDIUM/MEDIUM (15/15)
+RUN_COUNT=15
+POPULATION_COUNT=15
+
+# [Experiment]
+NAME=HIGH/LOW (30/5)
+RUN_COUNT=30
+POPULATION_COUNT=5
+
+# [Experiment Group]
+NAME=# of test-suite executions vs generation size
+RUNS=5
+ARC_PATH=/Users/devon/Documents/school/thesis/new-arc
+PROJECT_PATH=/Users/devon/Documents/school/thesis/new-arc/input
+MAX_GENERATIONS=15
+
+# [Experiment]
+NAME=LOW/HIGH (5/30)
+RUN_COUNT=5
+POPULATION_COUNT=30
+
+# [Experiment]
+NAME=MEDIUM/MEDIUM (15/15)
+RUN_COUNT=15
+POPULATION_COUNT=15
+
+# [Experiment]
+NAME=HIGH/LOW (30/5)
+RUN_COUNT=30
+POPULATION_COUNT=5

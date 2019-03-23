@@ -99,6 +99,17 @@ public class ProjectView extends ARCView implements FinishListener {
 		setArcPath(arcPath);
 		setProjectPath(projectPath);
 		this.runner.setOnFinish(this);
+		
+		// Try to dynamically find a project
+		if (ARC.isInitialized(this.arcPath) && !Project.isInitialized(
+				this.projectPath)) {
+			List<File> files = FileUtils.find(this.arcPath,
+					Project.PROJECT_CONFIG_FILE_REGEX, true);
+			if (!files.isEmpty()) {
+				setProjectPath(files.get(0).getParentFile().getAbsolutePath());
+				updateButtons();
+			}
+		}
 	}
 	
 	private void init() {
@@ -371,7 +382,7 @@ public class ProjectView extends ARCView implements FinishListener {
 			// Go back to the main screen
 			Object src = e.getSource();
 			if (src == backBtn) {
-				window.setView(new MainView(arcPath));
+				window.setView(new MainView(arcPath, projectPath));
 			}
 			
 			// Change the path to the project

@@ -48,8 +48,7 @@ import ca.sqrlab.arc.io.FileWriter;
  * <p>
  * 
  * @author Devon McGrath
- * @since ARC1.0
- * @version 1.0
+ * @since 1.0
  */
 public class SettingsManager {
 	
@@ -74,8 +73,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>parseFromFile</b></em>
-	 * <p>
 	 * Parses settings from a settings file and adds the settings from the
 	 * file to the current settings (overwriting any settings with the same
 	 * name).
@@ -106,43 +103,7 @@ public class SettingsManager {
 		// Put all the settings in the the map
 		int added = 0;
 		while (!lines.isEmpty()) {
-			String line = lines.remove(0);
-			if (line.isEmpty()) {
-				continue;
-			}
-			
-			// Clean the line
-			while (!line.isEmpty()) {
-				char s = line.charAt(0);
-				if (s == ' ' || s == '\t' || s == '\0') {
-					line = line.substring(1);
-				} else {
-					break;
-				}
-			}
-			if (line.isEmpty()) {
-				continue;
-			}
-			
-			// Parse the line
-			if (line.charAt(0) == '#') { // comment line
-				continue;
-			}
-			int idx = line.indexOf('=');
-			if (idx < 0) { // a boolean value
-				line = line.trim();
-				if (line.isEmpty()) {
-					continue;
-				}
-				setSetting(line, "1");
-				added ++;
-			} else if (idx + 1 < line.length()) { // regular setting
-				String setting = line.substring(0, idx).trim();
-				String value = line.substring(idx + 1);
-				if (value.isEmpty()) {
-					continue;
-				}
-				setSetting(setting, value);
+			if (addSetting(lines.remove(0))) {
 				added ++;
 			}
 		}
@@ -151,8 +112,83 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>writeToFile</em></b>
-	 * <p>
+	 * Adds a setting from a line of text. The line is parsed and the setting
+	 * name value pair are added to the settings manager if valid.
+	 * 
+	 * @param line	the line of text.
+	 * @return true if and only if the line was parsed and a setting was added
+	 * (or updated).
+	 * 
+	 * @since 1.0
+	 */
+	public boolean addSetting(String line) {
+		
+		if (line == null || line.isEmpty()) {
+			return false;
+		}
+		
+		// Clean the line
+		while (!line.isEmpty()) {
+			char s = line.charAt(0);
+			if (s == ' ' || s == '\t' || s == '\0') {
+				line = line.substring(1);
+			} else {
+				break;
+			}
+		}
+		if (line.isEmpty()) {
+			return false;
+		}
+		
+		// Parse the line
+		if (line.charAt(0) == '#') { // comment line
+			return false;
+		}
+		int idx = line.indexOf('=');
+		if (idx < 0) { // a boolean value
+			line = line.trim();
+			if (line.isEmpty()) {
+				return false;
+			}
+			setSetting(line, "1");
+		} else if (idx + 1 < line.length()) { // regular setting
+			String setting = line.substring(0, idx).trim();
+			String value = line.substring(idx + 1);
+			if (value.isEmpty()) {
+				return false;
+			}
+			setSetting(setting, value);
+		}
+		
+		return true;
+	}
+	
+	/**
+	 * Updates or adds the specified settings.
+	 * 
+	 * @param settings	the other settings.
+	 * @return a reference to this settings manager.
+	 * @since 1.0
+	 */
+	public SettingsManager updateSettings(SettingsManager settings) {
+		
+		// No settings
+		if (settings == null) {
+			return this;
+		}
+		
+		// Add all the settings
+		Set<String> names = settings.settings.keySet();
+		if (names == null || names.isEmpty()) {
+			return this;
+		}
+		for (String setting : names) {
+			setSetting(setting, settings.settings.get(setting));
+		}
+		return this;
+	}
+	
+	/**
 	 * Writes the settings to a file. If there are no settings, this method
 	 * will create and empty file.
 	 * 
@@ -187,8 +223,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>printSettings</em></b>
-	 * <p>
 	 * Prints the settings in an easy to read format to a specified stream.
 	 * 
 	 * @param stream	the stream to print to.
@@ -221,8 +255,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>printSettings</em></b>
-	 * <p>
 	 * Prints the settings in an easy to read format to the standard output
 	 * stream.
 	 * 
@@ -233,8 +265,6 @@ public class SettingsManager {
 	}
 
 	/**
-	 * <b><em>clearSettings</em></b>
-	 * <p>
 	 * Clears all the stored settings.
 	 * 
 	 * @see {@link #setSetting(String, String)}, {@link #getSetting(String)},
@@ -245,8 +275,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>setSetting</em></b>
-	 * <p>
 	 * Sets a specific setting to a specified value.
 	 * 
 	 * @param setting	the name of the setting.
@@ -263,8 +291,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>getSetting</em></b>
-	 * <p>
 	 * Gets the value of a setting. If the setting depends on other values,
 	 * it will be formatted. That is, calling {@link #setSetting(String, String)}
 	 * then {@link #getSetting(String)} with the same setting name may not return
@@ -309,8 +335,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>formatWithSettings</em></b>
-	 * <p>
 	 * Formats an arbitrary string with the settings in this object.
 	 * 
 	 * @param value	the value to format.
@@ -339,8 +363,6 @@ public class SettingsManager {
 	}
 	
 	/**
-	 * <b><em>getSettings</em></b>
-	 * <p>
 	 * Gets all the raw, unformatted settings as a map. Note: modifications to
 	 * this map will also make modifications to the settings. That is, the map
 	 * is not a clone of the settings.

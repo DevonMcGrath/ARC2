@@ -1050,6 +1050,48 @@ public class ARCGeneticAlgorithm {
 	public Individual getSolution() {
 		return solution;
 	}
+	
+	/**
+	 * Gets the generations produced by this genetic algorithm.
+	 * 
+	 * @return the generations.
+	 * @since 1.0
+	 */
+	public List<Generation> getGenerations() {
+		return generations;
+	}
+
+	/**
+	 * Gets the max number of individuals allowed in a single generation.
+	 * 
+	 * @return the individuals per generation.
+	 * @since 1.0
+	 */
+	public int getIndividualCount() {
+		return individualCount;
+	}
+
+	/**
+	 * Gets the maximum number of generations allowed before ARC determines
+	 * that a solution cannot be found.
+	 * 
+	 * @return the max number of generations.
+	 * @since 1.0
+	 */
+	public int getMaxGenerations() {
+		return maxGenerations;
+	}
+
+	/**
+	 * Gets the number of test-suite executions which will be performed on
+	 * any given individual.
+	 * 
+	 * @return the number of runs per individual.
+	 * @since 1.0
+	 */
+	public int getRuns() {
+		return runs;
+	}
 
 	/**
 	 * Gets the directory for a generation.
