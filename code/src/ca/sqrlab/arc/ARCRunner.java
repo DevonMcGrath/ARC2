@@ -7,7 +7,6 @@ import ca.sqrlab.arc.evolution.ARCGeneticAlgorithm;
 import ca.sqrlab.arc.evolution.Individual;
 import ca.sqrlab.arc.io.FileUtils;
 import ca.sqrlab.arc.java.JavaFile;
-import ca.sqrlab.arc.java.JavaParser;
 import ca.sqrlab.arc.tools.ARCUtils;
 import ca.sqrlab.arc.tools.AntBuildFile;
 import ca.sqrlab.arc.tools.instrumentation.CFlashInstrumentor;
@@ -36,6 +35,10 @@ import ca.sqrlab.arc.tools.testing.TestingSummary;
  * @since 1.0
  */
 public class ARCRunner extends Thread {
+	
+	/** The regular expression for the name of a Java file. */
+	public static final String JAVA_FILE_REGEX = "(_[_\\$a-zA-Z]+|"
+			+ "[\\$a-zA-Z]+)[_\\$a-zA-Z0-9]*\\.java";
 	
 	/** The ID passed to the {@link #getOnFinish()} listener when the ARC
 	 * runner has completed its execution. */
@@ -380,7 +383,7 @@ public class ARCRunner extends Thread {
 			
 			// Check for a Java file
 			res = FileUtils.find(val.getAbsolutePath(),
-					JavaParser.JAVA_FILE_REGEX, true);
+					JAVA_FILE_REGEX, true);
 			val = null;
 			for (File f : res) {
 				if (f.isFile()) {
