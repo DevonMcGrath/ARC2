@@ -1,3 +1,4 @@
 .DS_Store
 code/bin/
 code/.*
+arc/lib/ignore/
