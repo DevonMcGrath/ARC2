@@ -46,6 +46,9 @@ public class Individual implements Comparable<Individual> {
 	 * this individual. */
 	private TXLMutation mutation;
 	
+	/** The representation of this individual based on the files it is made of. */
+	private Mutant representation;
+	
 	/**
 	 * Constructs an individual with no information.
 	 * @since 1.0
@@ -133,6 +136,60 @@ public class Individual implements Comparable<Individual> {
 	 */
 	public boolean exists() {
 		return path != null && (new File(path)).isDirectory();
+	}
+	
+	/**
+	 * Mutates the representation of this individual to include a different
+	 * source file.
+	 * 
+	 * @param newFile		the new, absolute, source file path to include.
+	 * @param sourceFiles	the relative project source file paths.
+	 * @return the new mutant representation or null if this individual does
+	 * not have a representation.
+	 * 
+	 * @see #setRepresentation(Mutant)
+	 * @since 1.0
+	 */
+	public Mutant mutate(String newFile, String[] sourceFiles) {
+		
+		// No original mutant or files
+		if (representation == null || sourceFiles == null
+				|| sourceFiles.length == 0) {
+			return null;
+		}
+		
+		// No file to replace
+		if (newFile == null || newFile.isEmpty()) {
+			return representation.copy();
+		}
+		
+		Mutant m = representation.copy();
+		String[] files = m.getFiles();
+		String af = newFile.replaceAll("\\.java_[0-9]+", "");
+		int n = files.length;
+		
+		// Find the project file it is referring to
+		String path = null;
+		for (String sf : sourceFiles) {
+			if (af.endsWith(sf)) {
+				path = sf;
+			}
+		}
+		if (path == null) {
+			return m;
+		}
+		
+		// Find the relevant mutant file
+		for (int i = 0; i < n; i ++) {
+			if (files[i].endsWith(path)) {
+				files[i] = newFile;
+				break;
+			}
+		}
+		
+		m.setFiles(files);
+		
+		return m;
 	}
 	
 	/**
@@ -392,6 +449,31 @@ public class Individual implements Comparable<Individual> {
 		return this;
 	}
 	
+	/**
+	 * Gets the representation of this individual in terms of the source files
+	 * which create it.
+	 * 
+	 * @return the mutant representation.
+	 * @see #setRepresentation(Mutant)
+	 * @since 1.0
+	 */
+	public Mutant getRepresentation() {
+		return representation;
+	}
+
+	/**
+	 * Sets the mutant which represents this individual.
+	 * 
+	 * @param representation	the mutant representing this individual.
+	 * @return a reference to this individual.
+	 * @see #getRepresentation()
+	 * @since 1.0
+	 */
+	public Individual setRepresentation(Mutant representation) {
+		this.representation = representation;
+		return this;
+	}
+
 	/**
 	 * Compares this individual to another based on the fitness score.
 	 * 

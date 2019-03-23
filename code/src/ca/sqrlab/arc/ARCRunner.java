@@ -154,6 +154,7 @@ public class ARCRunner extends Thread {
 		
 		// Create ARC
 		this.arc = new ARC(arcPath, p);
+		this.arc.loadSettings();
 		AntBuildFile bf = p.getBuildFile();
 		
 		// Check if the TXL operator directory is defined
