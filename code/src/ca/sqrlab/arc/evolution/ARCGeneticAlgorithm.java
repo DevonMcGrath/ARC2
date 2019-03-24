@@ -418,21 +418,7 @@ public class ARCGeneticAlgorithm {
 		
 		// Determine all the possible individuals which can be mutated
 		List<Individual> candidates = getMutationCandidates();
-		final float USE_BEST = 0.75f;
 		int n = candidates.size();
-		int count = (int) ((USE_BEST * n) + 0.5f);
-		
-		// Make sure there is at least one candidate
-		if (count < 1) {
-			count = 1;
-		}
-		
-		// Remove mutations for older candidates which are no longer used
-		for (int i = count; i < n; i ++) {
-			Individual invalid = candidates.remove(count);
-			removeMutantsFor(invalid);
-		}
-		n = candidates.size();
 		
 		// Generate all the mutants for each candidate
 		TXLMutation[] allMutations = TXLMutation.getAllMutations();
@@ -953,33 +939,6 @@ public class ARCGeneticAlgorithm {
 		}
 		
 		return true;
-	}
-	
-	/**
-	 * Removes all the mutated versions of the program for the specified
-	 * individual. If this individual was never mutated, then this method
-	 * does nothing.
-	 * 
-	 * @param individual	the individual to remove mutants for.
-	 * 
-	 * @since 1.0
-	 */
-	private void removeMutantsFor(Individual individual) {
-		
-		// Nothing to do
-		if (individual == null) {
-			return;
-		}
-		
-		String slash = arc.getSetting(ARC.SETTING_DIR_SEPARATOR);
-		String base = arc.getSetting(ARC.SETTING_MUTANT_DIR);
-		if (base == null || base.isEmpty()) {
-			return;
-		}
-		
-		// Remove the appropriate directory
-		FileUtils.remove(base + slash + individual.getGeneration() +
-				slash + individual.getId());
 	}
 	
 	/**
