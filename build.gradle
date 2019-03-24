@@ -1,0 +1,19 @@
+plugins {
+  id 'application'
+}
+
+application {
+  mainClassName = 'ca.sqrlab.arc.Main'
+}
+
+sourceSets {
+    main.java.srcDirs = ['code/src']
+}
+
+jar {
+    manifest {
+        attributes 'Main-Class': 'ca.sqrlab.arc.Main'
+    }
+}
+
+apply plugin: 'java'

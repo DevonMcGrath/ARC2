@@ -2,3 +2,7 @@
 code/bin/
 code/.*
 arc/lib/ignore/
+arc/ARC/
+
+.gradle/
+build/
